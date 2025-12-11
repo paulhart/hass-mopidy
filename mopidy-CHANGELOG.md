@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.2] - 2025-12-11
+
+### Fixed
+
+- Fix bare `except:` clause in config flow with specific exception handling
+- Replace blocking `time.sleep()` with `asyncio.sleep()` in snapshot restore to prevent UI freezes
+- Add error context (hostname, port, operation) to all connection error logs for better diagnostics
+- Implement bounded LRU caches for artwork and titles to prevent unbounded memory growth
+- Remove duplicate `urllib.parse` import in media_player.py
+- Extract magic numbers to named constants (retry counts, volume steps, cache sizes)
+- Add comprehensive type hints to all public methods and class attributes
+- Document legacy `async_setup_platform` function for YAML configuration support
+
 ## [2.4.1] - 2024-11-12
 
 ### Fixed

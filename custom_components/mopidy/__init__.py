@@ -1,5 +1,6 @@
 """The mopidy component."""
 import logging
+from typing import Any
 
 from mopidyapi import MopidyAPI
 from requests.exceptions import ConnectionError as reConnectionError
@@ -15,12 +16,12 @@ from .const import DOMAIN
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup(hass: HomeAssistant, config: dict):
+async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
     """Set up the mopidy component."""
     return True
 
 
-def _test_connection(host, port):
+def _test_connection(host: str, port: int) -> bool:
     client = MopidyAPI(
         host=host,
         port=port,
@@ -31,15 +32,24 @@ def _test_connection(host, port):
     return True
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up the mopidy from a config entry."""
+    host = entry.data[CONF_HOST]
+    port = entry.data[CONF_PORT]
     try:
         await hass.async_add_executor_job(
-            _test_connection, entry.data[CONF_HOST], entry.data[CONF_PORT]
+            _test_connection, host, port
         )
 
     except reConnectionError as error:
-        raise ConfigEntryNotReady from error
+        _LOGGER.error(
+            "Cannot connect to Mopidy server at %s:%d during setup",
+            host,
+            port
+        )
+        raise ConfigEntryNotReady(
+            f"Cannot connect to Mopidy server at {host}:{port}"
+        ) from error
 
     hass.data.setdefault(DOMAIN, {})
 

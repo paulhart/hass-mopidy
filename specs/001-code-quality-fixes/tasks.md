@@ -22,10 +22,10 @@
 
 **Purpose**: Extract constants and set up cache infrastructure that will be used by multiple user stories
 
-- [ ] T001 Add new constants to `custom_components/mopidy/const.py`: `RESTORE_RETRY_MAX`, `RESTORE_RETRY_INTERVAL_SECONDS`, `VOLUME_STEP_PERCENT`, `CACHE_MAX_SIZE`
-- [ ] T002 [P] Import `collections.OrderedDict` in `custom_components/mopidy/const.py` for cache implementation
-- [ ] T003 [P] Convert `CACHE_ART` from `dict` to `OrderedDict` with size limit enforcement in `custom_components/mopidy/const.py`
-- [ ] T004 [P] Convert `CACHE_TITLES` from `dict` to `OrderedDict` with size limit enforcement in `custom_components/mopidy/const.py`
+- [x] T001 Add new constants to `custom_components/mopidy/const.py`: `RESTORE_RETRY_MAX`, `RESTORE_RETRY_INTERVAL_SECONDS`, `VOLUME_STEP_PERCENT`, `CACHE_MAX_SIZE`
+- [x] T002 [P] Import `collections.OrderedDict` in `custom_components/mopidy/const.py` for cache implementation
+- [x] T003 [P] Convert `CACHE_ART` from `dict` to `OrderedDict` with size limit enforcement in `custom_components/mopidy/const.py`
+- [x] T004 [P] Convert `CACHE_TITLES` from `dict` to `OrderedDict` with size limit enforcement in `custom_components/mopidy/const.py`
 
 ---
 
@@ -35,9 +35,9 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T005 Create helper function `_bounded_cache_set()` in `custom_components/mopidy/const.py` to enforce cache size limits with LRU eviction
-- [ ] T006 Update all `CACHE_ART[key] = value` assignments to use `_bounded_cache_set(CACHE_ART, key, value)` pattern
-- [ ] T007 Update all `CACHE_TITLES[key] = value` assignments to use `_bounded_cache_set(CACHE_TITLES, key, value)` pattern
+- [x] T005 Create helper function `_bounded_cache_set()` in `custom_components/mopidy/const.py` to enforce cache size limits with LRU eviction
+- [x] T006 Update all `CACHE_ART[key] = value` assignments to use `_bounded_cache_set(CACHE_ART, key, value)` pattern
+- [x] T007 Update all `CACHE_TITLES[key] = value` assignments to use `_bounded_cache_set(CACHE_TITLES, key, value)` pattern
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
@@ -51,15 +51,15 @@
 
 ### Implementation for User Story 1
 
-- [ ] T008 [US1] Replace bare `except:` clause with specific exception handling in `custom_components/mopidy/config_flow.py` line 85
-- [ ] T009 [US1] Add error context (hostname, port) to all connection error logs in `custom_components/mopidy/config_flow.py`
-- [ ] T010 [US1] Add error context (hostname, port, operation) to connection error logs in `custom_components/mopidy/__init__.py`
-- [ ] T011 [US1] Replace `time.sleep(0.5)` with `asyncio.sleep(0.5)` in `restore_snapshot()` method in `custom_components/mopidy/speaker.py` line 888
-- [ ] T012 [US1] Make `restore_snapshot()` method async and update call site in `custom_components/mopidy/media_player.py`
-- [ ] T013 [US1] Add error context to all connection error logs in `custom_components/mopidy/speaker.py` methods
-- [ ] T014 [US1] Add error context to all connection error logs in `custom_components/mopidy/media_player.py` methods
-- [ ] T015 [US1] Ensure all error handlers in `custom_components/mopidy/media_player.py` catch specific exception types (no bare except)
-- [ ] T016 [US1] Ensure all error handlers in `custom_components/mopidy/speaker.py` catch specific exception types (no bare except)
+- [x] T008 [US1] Replace bare `except:` clause with specific exception handling in `custom_components/mopidy/config_flow.py` line 85
+- [x] T009 [US1] Add error context (hostname, port) to all connection error logs in `custom_components/mopidy/config_flow.py`
+- [x] T010 [US1] Add error context (hostname, port, operation) to connection error logs in `custom_components/mopidy/__init__.py`
+- [x] T011 [US1] Replace `time.sleep(0.5)` with `asyncio.sleep(0.5)` in `restore_snapshot()` method in `custom_components/mopidy/speaker.py` line 888
+- [x] T012 [US1] Make `restore_snapshot()` method async and update call site in `custom_components/mopidy/media_player.py`
+- [x] T013 [US1] Add error context to all connection error logs in `custom_components/mopidy/speaker.py` methods
+- [x] T014 [US1] Add error context to all connection error logs in `custom_components/mopidy/media_player.py` methods
+- [x] T015 [US1] Ensure all error handlers in `custom_components/mopidy/media_player.py` catch specific exception types (no bare except)
+- [x] T016 [US1] Ensure all error handlers in `custom_components/mopidy/speaker.py` catch specific exception types (no bare except)
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently
 
@@ -73,10 +73,10 @@
 
 ### Implementation for User Story 2
 
-- [ ] T017 [US2] Increment version in `custom_components/mopidy/manifest.json` from "2.4.1" to "2.4.2" (PATCH bump for bug fixes)
-- [ ] T018 [US2] Add new changelog entry section `## [2.4.2] - YYYY-MM-DD` to `mopidy-CHANGELOG.md` at the top
-- [ ] T019 [US2] Categorize changes in changelog under "Fixed" section: error handling improvements, async/sync boundary fixes, cache bounding, technical debt cleanup
-- [ ] T020 [US2] Verify version number in changelog matches version in `manifest.json`
+- [x] T017 [US2] Increment version in `custom_components/mopidy/manifest.json` from "2.4.1" to "2.4.2" (PATCH bump for bug fixes)
+- [x] T018 [US2] Add new changelog entry section `## [2.4.2] - YYYY-MM-DD` to `mopidy-CHANGELOG.md` at the top
+- [x] T019 [US2] Categorize changes in changelog under "Fixed" section: error handling improvements, async/sync boundary fixes, cache bounding, technical debt cleanup
+- [x] T020 [US2] Verify version number in changelog matches version in `manifest.json`
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work independently
 
@@ -90,19 +90,19 @@
 
 ### Implementation for User Story 3
 
-- [ ] T021 [P] [US3] Remove duplicate `urllib.parse` import (line 11) in `custom_components/mopidy/media_player.py`
-- [ ] T022 [US3] Add comprehensive docstring to `async_setup_platform()` function in `custom_components/mopidy/media_player.py` explaining legacy YAML configuration support
-- [ ] T023 [US3] Remove "# NOTE: Is this still needed?" comment from `async_setup_platform()` in `custom_components/mopidy/media_player.py`
-- [ ] T024 [P] [US3] Replace magic number `120` with `RESTORE_RETRY_MAX` constant in `custom_components/mopidy/speaker.py` line 883
-- [ ] T025 [P] [US3] Replace magic number `0.5` with `RESTORE_RETRY_INTERVAL_SECONDS` constant in `custom_components/mopidy/speaker.py` line 888
-- [ ] T026 [P] [US3] Replace magic number `5` with `VOLUME_STEP_PERCENT` constant in `custom_components/mopidy/speaker.py` volume_up/volume_down methods
-- [ ] T027 [P] [US3] Add type hints to all public methods in `custom_components/mopidy/config_flow.py`
-- [ ] T028 [P] [US3] Add type hints to all public methods in `custom_components/mopidy/__init__.py`
-- [ ] T029 [P] [US3] Add type hints to all public methods in `custom_components/mopidy/media_player.py`
-- [ ] T030 [P] [US3] Add type hints to all public methods in `custom_components/mopidy/speaker.py`
-- [ ] T031 [P] [US3] Add type hints to all class attributes in `custom_components/mopidy/speaker.py` (MopidySpeaker, MopidyQueue, MopidyLibrary)
-- [ ] T032 [US3] Resolve or document all TODO/FIXME markers in modified files
-- [ ] T033 [US3] Run linter/type checker and verify zero new warnings introduced
+- [x] T021 [P] [US3] Remove duplicate `urllib.parse` import (line 11) in `custom_components/mopidy/media_player.py`
+- [x] T022 [US3] Add comprehensive docstring to `async_setup_platform()` function in `custom_components/mopidy/media_player.py` explaining legacy YAML configuration support
+- [x] T023 [US3] Remove "# NOTE: Is this still needed?" comment from `async_setup_platform()` in `custom_components/mopidy/media_player.py`
+- [x] T024 [P] [US3] Replace magic number `120` with `RESTORE_RETRY_MAX` constant in `custom_components/mopidy/speaker.py` line 883
+- [x] T025 [P] [US3] Replace magic number `0.5` with `RESTORE_RETRY_INTERVAL_SECONDS` constant in `custom_components/mopidy/speaker.py` line 888
+- [x] T026 [P] [US3] Replace magic number `5` with `VOLUME_STEP_PERCENT` constant in `custom_components/mopidy/speaker.py` volume_up/volume_down methods
+- [x] T027 [P] [US3] Add type hints to all public methods in `custom_components/mopidy/config_flow.py`
+- [x] T028 [P] [US3] Add type hints to all public methods in `custom_components/mopidy/__init__.py`
+- [x] T029 [P] [US3] Add type hints to all public methods in `custom_components/mopidy/media_player.py`
+- [x] T030 [P] [US3] Add type hints to all public methods in `custom_components/mopidy/speaker.py`
+- [x] T031 [P] [US3] Add type hints to all class attributes in `custom_components/mopidy/speaker.py` (MopidySpeaker, MopidyQueue, MopidyLibrary)
+- [x] T032 [US3] Resolve or document all TODO/FIXME markers in modified files
+- [x] T033 [US3] Run linter/type checker and verify zero new warnings introduced
 
 **Checkpoint**: All user stories should now be independently functional
 

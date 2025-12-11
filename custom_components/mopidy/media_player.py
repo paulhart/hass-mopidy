@@ -5,11 +5,9 @@ from functools import partial
 import re
 import time
 import urllib.parse as urlparse
+from urllib.parse import parse_qs
 from typing import Any
 import datetime as dt
-
-import urllib.parse as urlparse
-from urllib.parse import parse_qs
 
 from mopidyapi import MopidyAPI
 from requests.exceptions import ConnectionError as reConnectionError
@@ -58,6 +56,7 @@ from .const import (
     SERVICE_SNAPSHOT,
     SERVICE_SET_CONSUME_MODE,
     YOUTUBE_URLS,
+    _bounded_cache_set,
 )
 
 from .speaker import (
@@ -119,7 +118,7 @@ async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
-):
+) -> None:
     """Set up the Mopidy platform."""
     device_uuid = config_entry.data[CONF_ID]
     device_name = config_entry.data[CONF_NAME]
@@ -151,14 +150,24 @@ async def async_setup_entry(
         "service_set_consume_mode",
     )
 
-# NOTE: Is this still needed?
 async def async_setup_platform(
     hass: HomeAssistant,
     config: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
-    discover_info=None
-):
-    """Set up the Mopidy platform."""
+    discover_info: dict[str, Any] | None = None
+) -> None:
+    """Set up the Mopidy platform.
+    
+    Legacy support for YAML-based configuration. This function is retained for
+    backward compatibility with users who configure Mopidy via configuration.yaml.
+    Modern installations should use config flow (async_setup_entry) instead.
+    
+    Args:
+        hass: Home Assistant instance
+        config: Configuration entry from YAML
+        async_add_entities: Callback to add entities
+        discover_info: Optional discovery information
+    """
     device_name = config.get(CONF_NAME)
     hostname = config.get(CONF_HOST)
     port = config.get(CONF_PORT)
@@ -190,7 +199,7 @@ class MopidyMediaPlayerEntity(MediaPlayerEntity):
         else:
             self.device_uuid = device_uuid
 
-    def is_youtube_media_type(self, media_id):
+    def is_youtube_media_type(self, media_id: str) -> bool:
         """Check if the provided is a youtube resource"""
         url = urlparse.urlparse(media_id)
         if len([ x for x in YOUTUBE_URLS if url.netloc.lower().endswith(x.lower()) ]) > 0:
@@ -198,11 +207,11 @@ class MopidyMediaPlayerEntity(MediaPlayerEntity):
         else:
             return False
 
-    def resolve_youtube_media_type(self, media_type):
+    def resolve_youtube_media_type(self, media_type: MediaType | str) -> MediaType:
         """Return the media type for youtube videos"""
         return MediaType.MUSIC
 
-    def youtube_uri_from_media_id(self, media_id):
+    def youtube_uri_from_media_id(self, media_id: str) -> str:
         """Parse the youtube media_id and return a usable resource"""
         url = urlparse.urlparse(media_id)
         if "youtube" in self.speaker.supported_uri_schemes:
@@ -243,7 +252,8 @@ class MopidyMediaPlayerEntity(MediaPlayerEntity):
             partial(self.speaker.play_media , media_type, media_id, **kwargs)
         )
 
-    def force_update_ha_state(self):
+    def force_update_ha_state(self) -> None:
+        """Force update of Home Assistant state."""
         self.schedule_update_ha_state(force_refresh=True)
 
     def clear_playlist(self) -> None:
@@ -266,7 +276,7 @@ class MopidyMediaPlayerEntity(MediaPlayerEntity):
         """Send previous track command."""
         self.speaker.media_previous_track()
 
-    def media_seek(self, position) -> None:
+    def media_seek(self, position: float) -> None:
         """Send seek command."""
         self.speaker.media_seek(int(position * 1000))
 
@@ -274,28 +284,29 @@ class MopidyMediaPlayerEntity(MediaPlayerEntity):
         """Send stop command."""
         self.speaker.media_stop()
 
-    def mute_volume(self, mute) -> None:
+    def mute_volume(self, mute: bool) -> None:
         """Mute the volume."""
         self.speaker.set_mute(mute)
 
-    def select_source(self, source) -> None:
+    def select_source(self, source: str) -> None:
         """Select input source."""
         self.speaker.select_source(source)
 
-    def service_restore(self) -> None:
+    async def service_restore(self) -> None:
         """Restore Mopidy Server snapshot."""
-        self.speaker.restore_snapshot()
+        await self.speaker.restore_snapshot()
 
-    def service_search(self, **kwargs) -> None:
+    def service_search(self, **kwargs: Any) -> None:
         """Search the Mopidy Server media library."""
         self.speaker.queue_tracks(
             self._search(**kwargs)
         )
 
-    def service_get_search_result(self, **kwargs) -> dict:
+    def service_get_search_result(self, **kwargs: Any) -> dict[str, Any]:
+        """Get search results without adding to queue."""
         return {'result': self._search(**kwargs)}
 
-    def _search(self, **kwargs) -> dict:
+    def _search(self, **kwargs: Any) -> list[str]:
         query = {}
         if isinstance(kwargs.get("keyword"), str):
             query["any"] = [kwargs["keyword"].strip()]
@@ -313,7 +324,7 @@ class MopidyMediaPlayerEntity(MediaPlayerEntity):
             query["track_name"] = [kwargs["keyword_track_name"].strip()]
 
         if len(query.keys()) == 0:
-            return {'result': {}}
+            return []
 
         sources = []
         if isinstance(kwargs.get("source"), str):
@@ -321,7 +332,7 @@ class MopidyMediaPlayerEntity(MediaPlayerEntity):
 
         return self.library.search_tracks(sources, query, kwargs.get("exact", False))
 
-    def service_set_consume_mode(self, **kwargs) -> None:
+    def service_set_consume_mode(self, **kwargs: Any) -> None:
         """Set/Unset Consume mode"""
         self.speaker.set_consume_mode(kwargs.get("consume_mode", False))
 
@@ -329,15 +340,15 @@ class MopidyMediaPlayerEntity(MediaPlayerEntity):
         """Make a snapshot of Mopidy Server."""
         self.speaker.take_snapshot()
 
-    def set_repeat(self, repeat) -> None:
+    def set_repeat(self, repeat: RepeatMode) -> None:
         """Set repeat mode."""
         self.speaker.set_repeat_mode(repeat)
 
-    def set_shuffle(self, shuffle) -> None:
+    def set_shuffle(self, shuffle: bool) -> None:
         """Enable/disable shuffle mode."""
         self.speaker.set_shuffle(shuffle)
 
-    def set_volume_level(self, volume) -> None:
+    def set_volume_level(self, volume: float) -> None:
         """Set volume level, range 0..1."""
         self.speaker.set_volume(int(volume * 100))
 
@@ -503,8 +514,12 @@ class MopidyMediaPlayerEntity(MediaPlayerEntity):
 
     @property
     def source(self) -> str | None:
-        """Name of the current input source."""
-        # FIXME: DO we need to look at this?
+        """Name of the current input source.
+        
+        Note: Mopidy doesn't have traditional input sources. This property returns None
+        as source selection is handled via playlists in source_list. The _attr_source
+        attribute is not set anywhere in the current implementation.
+        """
         return self._attr_source
 
     @property
@@ -555,9 +570,9 @@ class MopidyMediaPlayerEntity(MediaPlayerEntity):
 
     async def async_browse_media(
         self,
-        media_content_type=None,
-        media_content_id=None,
-    ) -> None:
+        media_content_type: MediaType | str | None = None,
+        media_content_id: str | None = None,
+    ) -> BrowseMedia:
 
         if media_content_id is None:
             return await self.root_payload()
@@ -685,9 +700,9 @@ class MopidyMediaPlayerEntity(MediaPlayerEntity):
             i = self.library.get_images(uri_set)
             for img_uri in i:
                 if len(i[img_uri]) > 0:
-                    CACHE_ART[img_uri] = self.speaker.queue.expand_url(mopidy_info["source"], i[img_uri][0].uri)
+                    _bounded_cache_set(CACHE_ART, img_uri, self.speaker.queue.expand_url(mopidy_info["source"], i[img_uri][0].uri))
                 else:
-                    CACHE_ART[img_uri] = None
+                    _bounded_cache_set(CACHE_ART, img_uri, None)
 
         if (
             mopidy_info["art_uri"] in CACHE_ART
@@ -802,5 +817,5 @@ def get_media_info(info):
         media_info = library_info["media_content_id"].split(":")
         library_info["media_class"] = MediaClass.DIRECTORY
 
-    CACHE_TITLES[info["media_content_id"]] = library_info["title"]
+    _bounded_cache_set(CACHE_TITLES, info["media_content_id"], library_info["title"])
     return library_info, mopidy_info
