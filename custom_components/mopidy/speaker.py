@@ -1,9 +1,10 @@
 """Base classes for common mopidy speaker tasks.."""
+import asyncio
 import logging
 import datetime
-import time
 import urllib.parse as urlparse
 from urllib.parse import urlencode
+from typing import Any
 from mopidyapi import MopidyAPI
 
 from homeassistant.components import media_source, spotify
@@ -25,6 +26,9 @@ from requests.exceptions import ConnectionError as reConnectionError
 
 from .const import (
     DEFAULT_PORT,
+    RESTORE_RETRY_MAX,
+    RESTORE_RETRY_INTERVAL_SECONDS,
+    VOLUME_STEP_PERCENT,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -36,33 +40,33 @@ class MopidyLibrary:
     """Representation of the current Mopidy library."""
 
     api: MopidyAPI | None = None
-    _attr_supported_uri_schemes: list | None = None
+    _attr_supported_uri_schemes: list[str] | None = None
 
-    def browse(self, uri=None):
+    def browse(self, uri: str | None = None) -> Any:
         """Wrapper for the MopidyAPI.library.browse method"""
         # NOTE: when uri is None, the root will be returned
         return self.api.library.browse(uri)
 
-    def get_images(self, uris=None):
+    def get_images(self, uris: list[str] | None = None) -> dict[str, Any]:
         """Wrapper for the MopidyAPI.library.get_images method"""
         if uris is None:
-            # TODO: return error
-            return
+            _LOGGER.warning("get_images called with None URIs - returning empty dict")
+            return {}
 
         return self.api.library.get_images(uris)
 
-    def get_playlist(self, uri=None):
+    def get_playlist(self, uri: str | None = None) -> Any:
         """Get the playlist tracks"""
         return self.api.playlists.lookup(uri)
 
-    def get_playlist_track_uris(self, uri=None):
+    def get_playlist_track_uris(self, uri: str | None = None) -> list[str]:
         """Get uris of playlist tracks"""
         if uri.partition(":")[0] == "m3u":
             return [x.uri for x in self.get_playlist(uri).tracks]
 
         return [x.uri for x in self.browse(uri)]
 
-    def search(self, sources=None, query=None, exact=False):
+    def search(self, sources: list[str] | None = None, query: dict[str, list[str]] | None = None, exact: bool = False) -> Any:
         """Search the library for something"""
         if sources is None:
             sources = []
@@ -84,7 +88,7 @@ class MopidyLibrary:
         )
         return res
 
-    def search_tracks(self, sources=None, query=None, exact=False):
+    def search_tracks(self, sources: list[str] | None = None, query: dict[str, list[str]] | None = None, exact: bool = False) -> list[str]:
         """Search the library for matching tracks"""
         uris = []
         for res in self.search(sources, query, exact):
@@ -94,14 +98,14 @@ class MopidyLibrary:
         return uris
 
     @property
-    def playlists(self):
+    def playlists(self) -> list[Any]:
         """Return playlists known to mopidy"""
         if not hasattr(self.api, "playlists"):
             return []
         return self.api.playlists.as_list()
 
     @property
-    def supported_uri_schemes(self):
+    def supported_uri_schemes(self) -> list[str]:
         """Return the supported schemes (extensions)"""
         if self._attr_supported_uri_schemes is None:
             self._attr_supported_uri_schemes = self.api.rpc_call("core.get_uri_schemes")
@@ -145,9 +149,11 @@ class MopidyQueue:
             current_media_position = self.api.playback.get_time_position()
         except reConnectionError as error:
             _LOGGER.error(
-                "Cannot get current position"
+                "Cannot get current position from Mopidy server at %s:%d",
+                self.hostname,
+                self.port
             )
-            _LOGGER.debug(str(error))
+            _LOGGER.debug("Connection error details: %s", str(error))
 
         self.set_current_track_position(int(current_media_position / 1000))
 
@@ -157,9 +163,11 @@ class MopidyQueue:
             current_stream_title = self.api.playback.get_stream_title()
         except reConnectionError as error:
             _LOGGER.error(
-                "Cannot get current stream title"
+                "Cannot get current stream title from Mopidy server at %s:%d",
+                self.hostname,
+                self.port
             )
-            _LOGGER.debug(str(error))
+            _LOGGER.debug("Connection error details: %s", str(error))
             return
 
         if self._current_track_tlid is not None and self.queue[self._current_track_tlid] is not None:
@@ -176,9 +184,11 @@ class MopidyQueue:
             current_image = self.api.library.get_images([uri])
         except reConnectionError as error:
             _LOGGER.error(
-                "Cannot get image for media"
+                "Cannot get image for media from Mopidy server at %s:%d",
+                self.hostname,
+                self.port
             )
-            _LOGGER.debug(str(error))
+            _LOGGER.debug("Connection error details: %s", str(error))
 
         if (
             current_image is not None
@@ -210,7 +220,8 @@ class MopidyQueue:
 
         return self.queue[tlid]
 
-    def clear_current_track(self):
+    def clear_current_track(self) -> None:
+        """Clear current track information."""
         self._attr_current_track = None
         self._current_track_tlid = None
         self._current_track_album_artist = None
@@ -228,7 +239,7 @@ class MopidyQueue:
         self._current_track_number = None
         self._current_track_uri = None
 
-    def expand_url(self, extension, url):
+    def expand_url(self, extension: str, url: str) -> str:
         """Expand the URL with the mopidy base url and possibly a timestamp"""
         parsed_url = urlparse.urlparse(url)
         if parsed_url.netloc == "":
@@ -244,7 +255,7 @@ class MopidyQueue:
 
         return url
 
-    def parse_track_info(self, track, tlid=None, current=False):
+    def parse_track_info(self, track: Any, tlid: int | None = None, current: bool = False) -> dict[str, Any]:
         """Parse the track info"""
         track_info = { "tlid": tlid }
         if hasattr(track, "uri"):
@@ -317,9 +328,11 @@ class MopidyQueue:
             self._attr_current_track = current_track
         except reConnectionError as error:
             _LOGGER.error(
-                "Cannot get current track information"
+                "Cannot get current track information from Mopidy server at %s:%d",
+                self.hostname,
+                self.port
             )
-            _LOGGER.debug(str(error))
+            _LOGGER.debug("Connection error details: %s", str(error))
             return
 
         if hasattr(current_track, "track") and hasattr(current_track, "tlid"):
@@ -353,8 +366,9 @@ class MopidyQueue:
             res = self.api.tracklist.get_tl_tracks()
         except reConnectionError as error:
             _LOGGER.error(
-                "An error ocurred getting the queue tracks for %s.",
-                self.hostname
+                "An error occurred getting the queue tracks from Mopidy server at %s:%d",
+                self.hostname,
+                self.port
             )
             _LOGGER.debug(str(error))
 
@@ -399,8 +413,9 @@ class MopidyQueue:
         except reConnectionError as error:
             self._attr_is_available = False
             _LOGGER.error(
-                "An error ocurred getting the queue index for %s.",
-                self.hostname
+                "An error occurred getting the queue index from Mopidy server at %s:%d",
+                self.hostname,
+                self.port
             )
             _LOGGER.debug(str(error))
 
@@ -409,8 +424,9 @@ class MopidyQueue:
         except reConnectionError as error:
             self._attr_is_available = False
             _LOGGER.error(
-                "An error ocurred getting the queue track list size for %s.",
-                self.hostname
+                "An error occurred getting the queue track list size from Mopidy server at %s:%d",
+                self.hostname,
+                self.port
             )
             _LOGGER.debug(str(error))
 
@@ -449,8 +465,12 @@ class MopidyQueue:
 
     @property
     def current_track_image_remotely_accessible(self):
-        """Return whether the image url is remotely accessible of the current track"""
-        # FIXME: Check how this works
+        """Return whether the image url is remotely accessible of the current track.
+        
+        Note: Currently always returns False as images are expanded with local URL base
+        and are not directly accessible from remote clients. This property is maintained
+        for Home Assistant media player interface compatibility.
+        """
         return self._current_track_image_remotely_accessible
 
     @property
@@ -623,13 +643,15 @@ class MopidySpeaker:
             if self._first_failure:
                 self._first_failure = False
                 _LOGGER.error(
-                    "An error ocurred getting consume mode for %s.",
-                    self.hostname
+                    "An error occurred getting consume mode from Mopidy server at %s:%d",
+                    self.hostname,
+                    self.port
                 )
             else:
                 _LOGGER.debug(
-                    "An error ocurred getting consume mode for %s.",
-                    self.hostname
+                    "An error occurred getting consume mode from Mopidy server at %s:%d",
+                    self.hostname,
+                    self.port
                 )
             _LOGGER.debug(str(error))
 
@@ -640,8 +662,9 @@ class MopidySpeaker:
         except reConnectionError as error:
             self._attr_is_available = False
             _LOGGER.error(
-                "An error ocurred getting the repeat mode for %s.",
-                self.hostname
+                "An error occurred getting the repeat mode from Mopidy server at %s:%d",
+                self.hostname,
+                self.port
             )
             _LOGGER.debug(str(error))
 
@@ -650,8 +673,9 @@ class MopidySpeaker:
         except reConnectionError as error:
             self._attr_is_available = False
             _LOGGER.error(
-                "An error ocurred getting single repeat mode for %s.",
-                self.hostname
+                "An error occurred getting single repeat mode from Mopidy server at %s:%d",
+                self.hostname,
+                self.port
             )
             _LOGGER.debug(str(error))
 
@@ -669,8 +693,9 @@ class MopidySpeaker:
         except reConnectionError as error:
             self._attr_is_available = False
             _LOGGER.error(
-                "An error ocurred getting the shuffle mode for %s.",
-                self.hostname
+                "An error occurred getting the shuffle mode from Mopidy server at %s:%d",
+                self.hostname,
+                self.port
             )
             _LOGGER.debug(str(error))
 
@@ -682,7 +707,7 @@ class MopidySpeaker:
         except reConnectionError as error:
             self._attr_is_available = False
             _LOGGER.error(
-                "An error ocurred connecting to %s of port %s.",
+                "An error occurred connecting to Mopidy server at %s:%d",
                 self.hostname,
                 self.port
             )
@@ -695,8 +720,9 @@ class MopidySpeaker:
         except reConnectionError as error:
             self._attr_is_available = False
             _LOGGER.error(
-                "An error ocurred getting uri schemes for %s.",
-                self.hostname
+                "An error occurred getting URI schemes from Mopidy server at %s:%d",
+                self.hostname,
+                self.port
             )
             _LOGGER.debug(str(error))
 
@@ -713,8 +739,9 @@ class MopidySpeaker:
         except reConnectionError as error:
             self._attr_is_available = False
             _LOGGER.error(
-                "An error ocurred getting the state for %s.",
-                self.hostname
+                "An error occurred getting the playback state from Mopidy server at %s:%d",
+                self.hostname,
+                self.port
             )
             _LOGGER.debug(str(error))
 
@@ -725,8 +752,9 @@ class MopidySpeaker:
         except reConnectionError as error:
             self._attr_is_available = False
             _LOGGER.error(
-                "An error ocurred getting the volume level for %s.",
-                self.hostname
+                "An error occurred getting the volume level from Mopidy server at %s:%d",
+                self.hostname,
+                self.port
             )
             _LOGGER.debug(str(error))
         try:
@@ -734,8 +762,9 @@ class MopidySpeaker:
         except reConnectionError as error:
             self._attr_is_available = False
             _LOGGER.error(
-                "An error ocurred getting the mute mode for %s.",
-                self.hostname
+                "An error occurred getting the mute mode from Mopidy server at %s:%d",
+                self.hostname,
+                self.port
             )
             _LOGGER.debug(str(error))
 
@@ -746,8 +775,9 @@ class MopidySpeaker:
         except reConnectionError as error:
             self._attr_is_available = False
             _LOGGER.error(
-                "An error ocurred clearing the queue for %s.",
-                self.hostname
+                "An error occurred clearing the queue on Mopidy server at %s:%d",
+                self.hostname,
+                self.port
             )
             _LOGGER.debug(str(error))
 
@@ -758,8 +788,9 @@ class MopidySpeaker:
         except reConnectionError as error:
             self._attr_is_available = False
             _LOGGER.error(
-                "An error ocurred skipping to the next track for %s.",
-                self.hostname
+                "An error occurred skipping to the next track on Mopidy server at %s:%d",
+                self.hostname,
+                self.port
             )
             _LOGGER.debug(str(error))
 
@@ -770,8 +801,9 @@ class MopidySpeaker:
         except reConnectionError as error:
             self._attr_is_available = False
             _LOGGER.error(
-                "An error ocurred pausing for for %s.",
-                self.hostname
+                "An error occurred pausing playback on Mopidy server at %s:%d",
+                self.hostname,
+                self.port
             )
             _LOGGER.debug(str(error))
 
@@ -786,9 +818,15 @@ class MopidySpeaker:
                     tlid=current_tracks[int(index)].tlid
                 )
 
-            except Exception as error:
-                _LOGGER.error("The specified index %s could not be resolved", index)
-                _LOGGER.debug(str(error))
+            except (ValueError, IndexError, TypeError) as error:
+                _LOGGER.error(
+                    "The specified index %s could not be resolved for Mopidy server at %s:%d: %s",
+                    index,
+                    self.hostname,
+                    self.port,
+                    str(error)
+                )
+                _LOGGER.debug("Error details: %s", str(error))
 
     def media_previous_track(self):
         """Play previous track"""
@@ -859,11 +897,11 @@ class MopidySpeaker:
             self.queue.update_tracks()
         return ret
 
-    def restore_snapshot(self):
+    async def restore_snapshot(self):
         """Restore a snapshot"""
         if self.snapshot is None:
-            # TODO: Raise an error
-            return
+            _LOGGER.error("Cannot restore snapshot: no snapshot available for %s:%d", self.hostname, self.port)
+            raise ValueError("No snapshot available to restore")
         self.media_stop()
         self.clear_queue()
         self.queue_tracks(self.snapshot.get("queue_list",[]))
@@ -880,12 +918,17 @@ class MopidySpeaker:
                 state = self.api.playback.get_state()
                 if state in [MediaPlayerState.PLAYING, MediaPlayerState.PAUSED]:
                     break
-                if count >= 120:
-                    _LOGGER.error("media player is not playing after 60 seconds. Restoring the snapshot failed")
+                if count >= RESTORE_RETRY_MAX:
+                    _LOGGER.error(
+                        "Media player is not playing after %d retries. Restoring the snapshot failed for %s:%d",
+                        RESTORE_RETRY_MAX,
+                        self.hostname,
+                        self.port
+                    )
                     self.snapshot = None
                     return
-                count = count +1
-                time.sleep(.5)
+                count = count + 1
+                await asyncio.sleep(RESTORE_RETRY_INTERVAL_SECONDS)
 
             if self.snapshot.get("mediaposition",0) > 0:
                 self.media_seek(self.snapshot["mediaposition"])
@@ -992,12 +1035,12 @@ class MopidySpeaker:
     def volume_down(self):
         """Turn down the volume"""
         if self.volume_level is not None:
-            self.set_volume(self.volume_level - 5)
+            self.set_volume(self.volume_level - VOLUME_STEP_PERCENT)
 
     def volume_up(self):
         """Turn up the volume"""
         if self.volume_level is not None:
-            self.set_volume(self.volume_level + 5)
+            self.set_volume(self.volume_level + VOLUME_STEP_PERCENT)
 
     @callback
     def __ws_mute_changed(self, state_info):

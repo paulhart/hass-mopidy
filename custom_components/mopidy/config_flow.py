@@ -2,7 +2,7 @@
 import logging
 import re
 import socket
-from typing import Optional
+from typing import Any, Optional
 
 from mopidyapi import MopidyAPI
 from requests.exceptions import ConnectionError as reConnectionError
@@ -19,7 +19,7 @@ from .const import DEFAULT_PORT, DOMAIN  # pylint: disable=unused-import
 _LOGGER = logging.getLogger(__name__)
 
 
-def _validate_input(host, port):
+def _validate_input(host: str, port: int) -> bool:
     """Validate the user input."""
     client = MopidyAPI(
         host=host,
@@ -45,7 +45,8 @@ class MopidyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._uuid: Optional[str] = None
 
     @callback
-    def _async_get_entry(self):
+    def _async_get_entry(self) -> config_entries.ConfigFlowResult:
+        """Create config entry with current flow data."""
         return self.async_create_entry(
             title=self._name,
             data={
@@ -56,7 +57,8 @@ class MopidyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             },
         )
 
-    async def _set_uid_and_abort(self):
+    async def _set_uid_and_abort(self) -> None:
+        """Set unique ID and abort if already configured."""
         await self.async_set_unique_id(self._uuid)
         self._abort_if_unique_id_configured(
             updates={
@@ -66,9 +68,9 @@ class MopidyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             }
         )
 
-    async def async_step_user(self, user_input=None):
+    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> config_entries.ConfigFlowResult:
         """Handle the initial step."""
-        errors = {}
+        errors: dict[str, str] = {}
         if user_input is not None:
             self._host = user_input[CONF_HOST]
             self._port = user_input[CONF_PORT]
@@ -80,11 +82,14 @@ class MopidyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     _validate_input, self._host, self._port
                 )
             except reConnectionError:
-                _LOGGER.error("Can't connect to %s:%d", self._host, self._port)
+                _LOGGER.error("Can't connect to Mopidy server at %s:%d", self._host, self._port)
                 errors["base"] = "cannot_connect"
-            except:  # noqa: E722 # pylint: disable=bare-except
+            except Exception as error:
                 _LOGGER.exception(
-                    "Unexpected exception connecting to %s:%d", self._host, self._port
+                    "Unexpected exception connecting to Mopidy server at %s:%d: %s",
+                    self._host,
+                    self._port,
+                    str(error)
                 )
                 errors["base"] = "unknown"
 
@@ -104,7 +109,7 @@ class MopidyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             errors=errors,
         )
 
-    async def async_step_zeroconf(self, discovery_info: DiscoveryInfoType):
+    async def async_step_zeroconf(self, discovery_info: DiscoveryInfoType) -> config_entries.ConfigFlowResult:
         """Handle zeroconf discovery."""
         # Get mDNS address.
         mdns_address = discovery_info.hostname[:-1]
@@ -145,7 +150,7 @@ class MopidyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return await self.async_step_discovery_confirm()
 
-    async def async_step_discovery_confirm(self, user_input=None):
+    async def async_step_discovery_confirm(self, user_input: dict[str, Any] | None = None) -> config_entries.ConfigFlowResult:
         """Handle user-confirmation of discovered node."""
         if user_input is not None:
             try:
