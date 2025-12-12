@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.0] - 2025-12-11
+
+### Added
+
+- Add UI templates for enhanced queue management, playback history, and playlist management
+- Add queue management template (`docs/ui-templates/queue-management.yaml`) with reorder, remove, and filter track operations
+- Add playback history template (`docs/ui-templates/playback-history.yaml`) with track replay functionality
+- Add playlist management template (`docs/ui-templates/playlist-management.yaml`) with create, save, and delete operations
+- Add enhanced media player card template (`docs/ui-templates/media-player-enhanced.yaml`) with quick access to queue and history
+- Add helper entities configuration example (`docs/ui-templates/helpers.yaml`) for user input in templates
+- Add comprehensive UI template documentation in README.md with setup instructions and troubleshooting
+
+## [2.5.0] - 2025-12-11
+
+### Added
+
+- Add `mopidy.move_track` service to reorder tracks in the queue by moving from one position to another
+- Add `mopidy.remove_track` service to remove one or more tracks from the queue by position(s)
+- Add `mopidy.filter_tracks` service to remove tracks from the queue matching specified criteria (artist, album, genre, track_name) with AND logic
+- Add `mopidy.get_history` service to retrieve recently played tracks with metadata (URI, artist, album, track_name, timestamp)
+- Add `mopidy.play_from_history` service to play a track from playback history by index
+- Add `media_history` entity attribute containing the last 20 played tracks with metadata
+- Add `mopidy.create_playlist` service to create a new playlist from the current queue (overwrites existing playlist with same name)
+- Add `mopidy.delete_playlist` service to delete a playlist from the Mopidy server
+- Add `mopidy.save_playlist` service to save the current queue to an existing playlist
+- Add `mopidy.refresh_playlists` service to refresh the playlist list from the backend
+- Add `mopidy.lookup_track` service to get detailed track metadata for a track URI
+- Add `mopidy.find_exact` service to find tracks matching exact criteria (case-insensitive full string match)
+
 ## [2.4.2] - 2025-12-11
 
 ### Fixed

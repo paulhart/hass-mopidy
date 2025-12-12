@@ -633,6 +633,111 @@ class MopidySpeaker:
         else:
             return None
 
+    def _convert_user_position_to_api(self, user_position: int) -> int:
+        """Convert 1-based user position to 0-based API position.
+        
+        Args:
+            user_position: 1-based position (first track = 1)
+            
+        Returns:
+            0-based position for Mopidy API (first track = 0)
+        """
+        return user_position - 1
+
+    def _validate_queue_position(self, position: int, queue_length: int | None) -> None:
+        """Validate that a 1-based position is within valid range.
+        
+        Args:
+            position: 1-based position to validate
+            queue_length: Current queue length (None if unknown)
+            
+        Raises:
+            ValueError: If position is out of valid range (1 to queue_length)
+        """
+        if queue_length is None or queue_length == 0:
+            raise ValueError("Queue is empty")
+        if position < 1 or position > queue_length:
+            raise ValueError(
+                f"Position {position} is out of range. Valid range is 1 to {queue_length}"
+            )
+
+    def _format_history_entry(self, history_track: Any) -> dict[str, Any]:
+        """Format Mopidy history entry with required fields.
+        
+        Args:
+            history_track: Mopidy history track object (has track and timestamp attributes)
+            
+        Returns:
+            Dictionary with URI, artist, album, track_name, and timestamp fields
+        """
+        track = history_track.track if hasattr(history_track, 'track') else history_track
+        timestamp = history_track.timestamp if hasattr(history_track, 'timestamp') else None
+        
+        entry: dict[str, Any] = {
+            'uri': track.uri if hasattr(track, 'uri') else None,
+            'artist': None,
+            'album': None,
+            'track_name': track.name if hasattr(track, 'name') else None,
+            'timestamp': timestamp.isoformat() if timestamp else dt_util.utcnow().isoformat(),
+        }
+        
+        # Extract artist
+        if hasattr(track, 'artists') and track.artists and len(track.artists) > 0:
+            entry['artist'] = track.artists[0].name if hasattr(track.artists[0], 'name') else None
+        
+        # Extract album
+        if hasattr(track, 'album') and track.album:
+            entry['album'] = track.album.name if hasattr(track.album, 'name') else None
+        
+        return entry
+
+    def _match_filter_criteria(self, track: Any, criteria: dict[str, str]) -> bool:
+        """Check if a track matches filter criteria (case-insensitive, AND logic).
+        
+        Args:
+            track: Track object to check
+            criteria: Dictionary with optional artist, album, genre, track_name fields
+            
+        Returns:
+            True if track matches ALL specified criteria, False otherwise
+        """
+        # Extract track metadata
+        track_artist = None
+        track_album = None
+        track_genre = None
+        track_name = None
+        
+        if hasattr(track, 'artists') and track.artists and len(track.artists) > 0:
+            track_artist = track.artists[0].name if hasattr(track.artists[0], 'name') else None
+        
+        if hasattr(track, 'album') and track.album:
+            track_album = track.album.name if hasattr(track.album, 'name') else None
+        
+        if hasattr(track, 'genre'):
+            track_genre = track.genre
+        
+        if hasattr(track, 'name'):
+            track_name = track.name
+        
+        # Check each criterion (AND logic - all must match)
+        if 'artist' in criteria and criteria['artist']:
+            if not track_artist or criteria['artist'].lower() not in track_artist.lower():
+                return False
+        
+        if 'album' in criteria and criteria['album']:
+            if not track_album or criteria['album'].lower() not in track_album.lower():
+                return False
+        
+        if 'genre' in criteria and criteria['genre']:
+            if not track_genre or criteria['genre'].lower() not in track_genre.lower():
+                return False
+        
+        if 'track_name' in criteria and criteria['track_name']:
+            if not track_name or criteria['track_name'].lower() not in track_name.lower():
+                return False
+        
+        return True
+
     def __get_consume_mode(self):
         """Get the Mopidy Instance consume mode"""
         try:
@@ -780,6 +885,206 @@ class MopidySpeaker:
                 self.port
             )
             _LOGGER.debug(str(error))
+
+    def move_track(self, from_position: int, to_position: int) -> None:
+        """Move a track from one position to another in the queue.
+        
+        Args:
+            from_position: 1-based source position
+            to_position: 1-based destination position
+            
+        Raises:
+            ValueError: If positions are out of valid range
+            reConnectionError: If Mopidy server is unavailable
+        """
+        try:
+            queue_length = self.queue.size
+            self._validate_queue_position(from_position, queue_length)
+            self._validate_queue_position(to_position, queue_length)
+            
+            from_api = self._convert_user_position_to_api(from_position)
+            to_api = self._convert_user_position_to_api(to_position)
+            
+            self.api.tracklist.move(start=from_api, end=from_api, to_position=to_api)
+            self.queue.update_tracks()
+        except reConnectionError as error:
+            self._attr_is_available = False
+            _LOGGER.error(
+                "An error occurred moving track from position %d to %d on Mopidy server at %s:%d",
+                from_position,
+                to_position,
+                self.hostname,
+                self.port
+            )
+            _LOGGER.debug("Connection error details: %s", str(error))
+            raise
+
+    def remove_track(self, position: int | None = None, positions: list[int] | None = None) -> None:
+        """Remove one or more tracks from the queue by position(s).
+        
+        Args:
+            position: Single 1-based position to remove (optional)
+            positions: List of 1-based positions to remove (optional)
+            
+        Raises:
+            ValueError: If no position provided, positions out of range, or queue is empty
+            reConnectionError: If Mopidy server is unavailable
+        """
+        if position is None and positions is None:
+            raise ValueError("Either position or positions must be provided")
+        
+        try:
+            queue_length = self.queue.size
+            if queue_length is None or queue_length == 0:
+                raise ValueError("Queue is empty")
+            
+            # Collect all positions to remove
+            positions_to_remove: list[int] = []
+            if position is not None:
+                positions_to_remove.append(position)
+            if positions is not None:
+                positions_to_remove.extend(positions)
+            
+            # Validate all positions
+            for pos in positions_to_remove:
+                self._validate_queue_position(pos, queue_length)
+            
+            # Get current tracks to find tlids
+            current_tracks = self.api.tracklist.get_tl_tracks()
+            
+            # Convert positions to tlids (remove from highest to lowest to maintain indices)
+            positions_to_remove.sort(reverse=True)
+            tlids_to_remove: list[int] = []
+            for pos in positions_to_remove:
+                api_pos = self._convert_user_position_to_api(pos)
+                if api_pos < len(current_tracks):
+                    tlids_to_remove.append(current_tracks[api_pos].tlid)
+            
+            # Remove tracks
+            if tlids_to_remove:
+                self.api.tracklist.remove(criteria={"tlid": tlids_to_remove})
+                self.queue.update_tracks()
+        except reConnectionError as error:
+            self._attr_is_available = False
+            _LOGGER.error(
+                "An error occurred removing track(s) from queue on Mopidy server at %s:%d",
+                self.hostname,
+                self.port
+            )
+            _LOGGER.debug("Connection error details: %s", str(error))
+            raise
+
+    def filter_tracks(self, criteria: dict[str, str]) -> None:
+        """Remove tracks from the queue matching specified criteria.
+        
+        Args:
+            criteria: Dictionary with optional artist, album, genre, track_name fields.
+                     At least one field must be provided.
+                     Matching is case-insensitive, AND logic (all criteria must match).
+            
+        Raises:
+            ValueError: If criteria is empty or queue is empty
+            reConnectionError: If Mopidy server is unavailable
+        """
+        # Validate criteria has at least one field
+        if not criteria or not any(criteria.values()):
+            raise ValueError("At least one criteria field must be provided")
+        
+        try:
+            queue_length = self.queue.size
+            if queue_length is None or queue_length == 0:
+                raise ValueError("Queue is empty")
+            
+            # Get current tracks
+            current_tracks = self.api.tracklist.get_tl_tracks()
+            
+            # Find matching tracks
+            tlids_to_remove: list[int] = []
+            for tl_track in current_tracks:
+                if self._match_filter_criteria(tl_track.track, criteria):
+                    tlids_to_remove.append(tl_track.tlid)
+            
+            # Remove matching tracks
+            if tlids_to_remove:
+                self.api.tracklist.remove(criteria={"tlid": tlids_to_remove})
+                self.queue.update_tracks()
+        except reConnectionError as error:
+            self._attr_is_available = False
+            _LOGGER.error(
+                "An error occurred filtering tracks from queue on Mopidy server at %s:%d",
+                self.hostname,
+                self.port
+            )
+            _LOGGER.debug("Connection error details: %s", str(error))
+            raise
+
+    def get_history(self, limit: int = 20) -> list[dict[str, Any]]:
+        """Get recently played tracks with metadata.
+        
+        Args:
+            limit: Maximum number of tracks to return (default 20)
+            
+        Returns:
+            List of history entries, each with URI, artist, album, track_name, timestamp
+            
+        Raises:
+            reConnectionError: If Mopidy server is unavailable
+        """
+        try:
+            history_tracks = self.api.history.get_history(limit=limit)
+            formatted_history: list[dict[str, Any]] = []
+            
+            for history_track in history_tracks:
+                formatted_entry = self._format_history_entry(history_track)
+                formatted_history.append(formatted_entry)
+            
+            return formatted_history
+        except reConnectionError as error:
+            self._attr_is_available = False
+            _LOGGER.error(
+                "An error occurred getting playback history from Mopidy server at %s:%d",
+                self.hostname,
+                self.port
+            )
+            _LOGGER.debug("Connection error details: %s", str(error))
+            raise
+
+    def play_from_history(self, index: int) -> None:
+        """Play a track from playback history by index.
+        
+        Args:
+            index: History index (0 = most recent)
+            
+        Raises:
+            ValueError: If index is out of range or no history available
+            reConnectionError: If Mopidy server is unavailable
+        """
+        try:
+            history_tracks = self.api.history.get_history()
+            if not history_tracks or index >= len(history_tracks):
+                raise ValueError(
+                    f"History index {index} is out of range. History has {len(history_tracks) if history_tracks else 0} entries."
+                )
+            
+            history_entry = history_tracks[index]
+            track_uri = history_entry.track.uri if hasattr(history_entry, 'track') and hasattr(history_entry.track, 'uri') else history_entry.uri
+            
+            if not track_uri:
+                raise ValueError("Track URI not found in history entry")
+            
+            # Play the track by adding to queue and playing
+            self.queue_tracks([track_uri])
+            self.media_play()
+        except reConnectionError as error:
+            self._attr_is_available = False
+            _LOGGER.error(
+                "An error occurred playing from history (index %d) on Mopidy server at %s:%d",
+                index,
+                self.hostname,
+                self.port
+            )
+            _LOGGER.debug("Connection error details: %s", str(error))
+            raise
 
     def media_next_track(self):
         """Play next track"""
@@ -938,6 +1243,296 @@ class MopidySpeaker:
 
             self.snapshot = None
             self._attr_snapshot_at = None
+
+    def create_playlist(self, name: str) -> None:
+        """Create a new playlist from the current queue.
+        
+        Args:
+            name: Playlist name. If a playlist with this name exists, it will be overwritten.
+            
+        Raises:
+            ValueError: If queue is empty
+            NotImplementedError: If backend doesn't support playlist creation
+            reConnectionError: If Mopidy server is unavailable
+        """
+        try:
+            queue_length = self.queue.size
+            if queue_length is None or queue_length == 0:
+                raise ValueError("Queue is empty")
+            
+            # Get queue track URIs
+            queue_uris = self.queue.uri_list
+            
+            # Check for existing playlist with same name
+            existing_playlist = None
+            for playlist in self.library.playlists:
+                if playlist.name == name:
+                    existing_playlist = playlist
+                    break
+            
+            if existing_playlist:
+                # Overwrite existing playlist
+                self.api.playlists.save(playlist={
+                    'uri': existing_playlist.uri,
+                    'name': name,
+                    'tracks': [{'uri': uri} for uri in queue_uris]
+                })
+            else:
+                # Create new playlist
+                self.api.playlists.create(name=name, tracks=[{'uri': uri} for uri in queue_uris])
+            
+            # Refresh playlist list
+            self.__get_source_list()
+        except reConnectionError as error:
+            self._attr_is_available = False
+            _LOGGER.error(
+                "An error occurred creating playlist '%s' on Mopidy server at %s:%d",
+                name,
+                self.hostname,
+                self.port
+            )
+            _LOGGER.debug("Connection error details: %s", str(error))
+            raise
+        except AttributeError:
+            # Backend doesn't support playlist operations
+            raise NotImplementedError("Playlist creation is not supported by this backend")
+
+    def delete_playlist(self, uri: str) -> None:
+        """Delete a playlist from the Mopidy server.
+        
+        Args:
+            uri: Playlist URI
+            
+        Raises:
+            ValueError: If playlist not found
+            NotImplementedError: If backend doesn't support playlist deletion
+            reConnectionError: If Mopidy server is unavailable
+        """
+        try:
+            self.api.playlists.delete(uri=uri)
+            # Refresh playlist list
+            self.__get_source_list()
+        except reConnectionError as error:
+            self._attr_is_available = False
+            _LOGGER.error(
+                "An error occurred deleting playlist '%s' on Mopidy server at %s:%d",
+                uri,
+                self.hostname,
+                self.port
+            )
+            _LOGGER.debug("Connection error details: %s", str(error))
+            raise
+        except AttributeError:
+            # Backend doesn't support playlist operations
+            raise NotImplementedError("Playlist deletion is not supported by this backend")
+
+    def save_playlist(self, uri: str) -> None:
+        """Save the current queue to an existing playlist.
+        
+        Args:
+            uri: Playlist URI to save to
+            
+        Raises:
+            ValueError: If queue is empty or playlist not found
+            NotImplementedError: If backend doesn't support playlist save
+            reConnectionError: If Mopidy server is unavailable
+        """
+        try:
+            queue_length = self.queue.size
+            if queue_length is None or queue_length == 0:
+                raise ValueError("Queue is empty")
+            
+            # Get queue track URIs
+            queue_uris = self.queue.uri_list
+            
+            # Get playlist to verify it exists and get name
+            playlist = self.api.playlists.lookup(uri=uri)
+            if not playlist:
+                raise ValueError(f"Playlist not found: {uri}")
+            
+            playlist_name = playlist.name if hasattr(playlist, 'name') else uri.split(':')[-1]
+            
+            # Save playlist with queue contents
+            self.api.playlists.save(playlist={
+                'uri': uri,
+                'name': playlist_name,
+                'tracks': [{'uri': uri} for uri in queue_uris]
+            })
+            
+            # Refresh playlist list
+            self.__get_source_list()
+        except reConnectionError as error:
+            self._attr_is_available = False
+            _LOGGER.error(
+                "An error occurred saving playlist '%s' on Mopidy server at %s:%d",
+                uri,
+                self.hostname,
+                self.port
+            )
+            _LOGGER.debug("Connection error details: %s", str(error))
+            raise
+        except AttributeError:
+            # Backend doesn't support playlist operations
+            raise NotImplementedError("Playlist save is not supported by this backend")
+
+    def refresh_playlists(self) -> None:
+        """Refresh the playlist list from the backend.
+        
+        Raises:
+            reConnectionError: If Mopidy server is unavailable
+        """
+        try:
+            self.api.playlists.refresh()
+            self.__get_source_list()
+        except reConnectionError as error:
+            self._attr_is_available = False
+            _LOGGER.error(
+                "An error occurred refreshing playlists on Mopidy server at %s:%d",
+                self.hostname,
+                self.port
+            )
+            _LOGGER.debug("Connection error details: %s", str(error))
+            raise
+
+    def lookup_track(self, uri: str) -> dict[str, Any]:
+        """Get detailed track metadata for a track URI.
+        
+        Args:
+            uri: Track URI to lookup
+            
+        Returns:
+            Dictionary with complete track metadata (uri, name, artists, album, length, etc.)
+            
+        Raises:
+            ValueError: If track not found or URI is invalid
+            reConnectionError: If Mopidy server is unavailable
+        """
+        try:
+            tracks = self.api.library.lookup(uris=[uri])
+            if not tracks or len(tracks) == 0 or not tracks[0]:
+                raise ValueError(f"Track not found: {uri}")
+            
+            track = tracks[0]
+            metadata: dict[str, Any] = {
+                'uri': track.uri if hasattr(track, 'uri') else uri,
+                'name': track.name if hasattr(track, 'name') else None,
+                'artists': [],
+                'album': None,
+                'length': track.length if hasattr(track, 'length') else None,
+                'track_no': track.track_no if hasattr(track, 'track_no') else None,
+                'date': None,
+                'genre': None,
+            }
+            
+            # Extract artists
+            if hasattr(track, 'artists') and track.artists:
+                metadata['artists'] = [
+                    {'name': artist.name, 'uri': artist.uri} if hasattr(artist, 'name') else {'uri': artist.uri if hasattr(artist, 'uri') else None}
+                    for artist in track.artists
+                ]
+            
+            # Extract album
+            if hasattr(track, 'album') and track.album:
+                metadata['album'] = {
+                    'name': track.album.name if hasattr(track.album, 'name') else None,
+                    'uri': track.album.uri if hasattr(track.album, 'uri') else None,
+                    'date': track.album.date if hasattr(track.album, 'date') else None,
+                }
+            
+            # Extract date and genre if available
+            if hasattr(track, 'date'):
+                metadata['date'] = track.date
+            if hasattr(track, 'genre'):
+                metadata['genre'] = track.genre
+            
+            return metadata
+        except reConnectionError as error:
+            self._attr_is_available = False
+            _LOGGER.error(
+                "An error occurred looking up track '%s' on Mopidy server at %s:%d",
+                uri,
+                self.hostname,
+                self.port
+            )
+            _LOGGER.debug("Connection error details: %s", str(error))
+            raise
+
+    def find_exact(self, query: dict[str, str]) -> list[str]:
+        """Find tracks matching exact criteria (case-insensitive full string match).
+        
+        Args:
+            query: Dictionary with optional artist, album, track_name fields.
+                   At least one field must be provided.
+                   Matching is case-insensitive full string match (AND logic).
+            
+        Returns:
+            List of matching track URIs
+            
+        Raises:
+            ValueError: If query is empty
+            reConnectionError: If Mopidy server is unavailable
+        """
+        # Validate query has at least one field
+        if not query or not any(query.values()):
+            raise ValueError("At least one query field must be provided")
+        
+        try:
+            # Build Mopidy search query format
+            mopidy_query: dict[str, list[str]] = {}
+            
+            if 'artist' in query and query['artist']:
+                mopidy_query['artist'] = [query['artist']]
+            if 'album' in query and query['album']:
+                mopidy_query['album'] = [query['album']]
+            if 'track_name' in query and query['track_name']:
+                mopidy_query['track_name'] = [query['track_name']]
+            
+            # Call find_exact API
+            search_results = self.api.library.find_exact(query=mopidy_query, uris=None)
+            
+            # Extract track URIs
+            track_uris: list[str] = []
+            for result in search_results:
+                if hasattr(result, 'tracks'):
+                    for track in result.tracks:
+                        if hasattr(track, 'uri'):
+                            # Apply case-insensitive full string matching filter
+                            matches = True
+                            track_artist = None
+                            track_album = None
+                            track_name = None
+                            
+                            if hasattr(track, 'artists') and track.artists and len(track.artists) > 0:
+                                track_artist = track.artists[0].name if hasattr(track.artists[0], 'name') else None
+                            if hasattr(track, 'album') and track.album:
+                                track_album = track.album.name if hasattr(track.album, 'name') else None
+                            if hasattr(track, 'name'):
+                                track_name = track.name
+                            
+                            # Check exact match (case-insensitive, full string)
+                            if 'artist' in query and query['artist']:
+                                if not track_artist or track_artist.lower() != query['artist'].lower():
+                                    matches = False
+                            if 'album' in query and query['album']:
+                                if not track_album or track_album.lower() != query['album'].lower():
+                                    matches = False
+                            if 'track_name' in query and query['track_name']:
+                                if not track_name or track_name.lower() != query['track_name'].lower():
+                                    matches = False
+                            
+                            if matches:
+                                track_uris.append(track.uri)
+            
+            return track_uris
+        except reConnectionError as error:
+            self._attr_is_available = False
+            _LOGGER.error(
+                "An error occurred finding exact tracks on Mopidy server at %s:%d",
+                self.hostname,
+                self.port
+            )
+            _LOGGER.debug("Connection error details: %s", str(error))
+            raise
 
     def select_source(self, value):
         """play the selected source"""

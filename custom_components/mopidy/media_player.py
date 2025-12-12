@@ -102,6 +102,59 @@ SEARCH_SCHEMA = {
     vol.Optional("source"): cv.string,
 }
 
+MOVE_TRACK_SCHEMA = {
+    vol.Required("from_position"): cv.positive_int,
+    vol.Required("to_position"): cv.positive_int,
+}
+
+REMOVE_TRACK_SCHEMA = {
+    vol.Optional("position"): cv.positive_int,
+    vol.Optional("positions"): [cv.positive_int],
+}
+
+FILTER_TRACKS_SCHEMA = {
+    vol.Required("criteria"): {
+        vol.Optional("artist"): cv.string,
+        vol.Optional("album"): cv.string,
+        vol.Optional("genre"): cv.string,
+        vol.Optional("track_name"): cv.string,
+    },
+}
+
+GET_HISTORY_SCHEMA = {
+    vol.Optional("limit", default=20): cv.positive_int,
+}
+
+PLAY_FROM_HISTORY_SCHEMA = {
+    vol.Required("index"): cv.positive_int,
+}
+
+CREATE_PLAYLIST_SCHEMA = {
+    vol.Required("name"): cv.string,
+}
+
+DELETE_PLAYLIST_SCHEMA = {
+    vol.Required("uri"): cv.string,
+}
+
+SAVE_PLAYLIST_SCHEMA = {
+    vol.Required("uri"): cv.string,
+}
+
+REFRESH_PLAYLISTS_SCHEMA = {}
+
+LOOKUP_TRACK_SCHEMA = {
+    vol.Required("uri"): cv.string,
+}
+
+FIND_EXACT_SCHEMA = {
+    vol.Required("query"): {
+        vol.Optional("artist"): cv.string,
+        vol.Optional("album"): cv.string,
+        vol.Optional("track_name"): cv.string,
+    },
+}
+
 
 def media_source_filter(item: BrowseMedia):
     """Filter media sources."""
@@ -148,6 +201,64 @@ async def async_setup_entry(
         SERVICE_SET_CONSUME_MODE,
         {vol.Required("consume_mode", default=False): cv.boolean},
         "service_set_consume_mode",
+    )
+    platform.async_register_entity_service(
+        "move_track",
+        MOVE_TRACK_SCHEMA,
+        "service_move_track",
+    )
+    platform.async_register_entity_service(
+        "remove_track",
+        REMOVE_TRACK_SCHEMA,
+        "service_remove_track",
+    )
+    platform.async_register_entity_service(
+        "filter_tracks",
+        FILTER_TRACKS_SCHEMA,
+        "service_filter_tracks",
+    )
+    platform.async_register_entity_service(
+        "get_history",
+        GET_HISTORY_SCHEMA,
+        "service_get_history",
+        supports_response=SupportsResponse.ONLY,
+    )
+    platform.async_register_entity_service(
+        "play_from_history",
+        PLAY_FROM_HISTORY_SCHEMA,
+        "service_play_from_history",
+    )
+    platform.async_register_entity_service(
+        "create_playlist",
+        CREATE_PLAYLIST_SCHEMA,
+        "service_create_playlist",
+    )
+    platform.async_register_entity_service(
+        "delete_playlist",
+        DELETE_PLAYLIST_SCHEMA,
+        "service_delete_playlist",
+    )
+    platform.async_register_entity_service(
+        "save_playlist",
+        SAVE_PLAYLIST_SCHEMA,
+        "service_save_playlist",
+    )
+    platform.async_register_entity_service(
+        "refresh_playlists",
+        REFRESH_PLAYLISTS_SCHEMA,
+        "service_refresh_playlists",
+    )
+    platform.async_register_entity_service(
+        "lookup_track",
+        LOOKUP_TRACK_SCHEMA,
+        "service_lookup_track",
+        supports_response=SupportsResponse.ONLY,
+    )
+    platform.async_register_entity_service(
+        "find_exact",
+        FIND_EXACT_SCHEMA,
+        "service_find_exact",
+        supports_response=SupportsResponse.ONLY,
     )
 
 async def async_setup_platform(
@@ -339,6 +450,72 @@ class MopidyMediaPlayerEntity(MediaPlayerEntity):
     def service_snapshot(self) -> None:
         """Make a snapshot of Mopidy Server."""
         self.speaker.take_snapshot()
+
+    def service_move_track(self, **kwargs: Any) -> None:
+        """Move a track from one position to another in the queue."""
+        from_position = kwargs.get("from_position")
+        to_position = kwargs.get("to_position")
+        self.speaker.move_track(from_position, to_position)
+        self.force_update_ha_state()
+
+    def service_remove_track(self, **kwargs: Any) -> None:
+        """Remove one or more tracks from the queue by position(s)."""
+        position = kwargs.get("position")
+        positions = kwargs.get("positions")
+        self.speaker.remove_track(position=position, positions=positions)
+        self.force_update_ha_state()
+
+    def service_filter_tracks(self, **kwargs: Any) -> None:
+        """Remove tracks from the queue matching specified criteria."""
+        criteria = kwargs.get("criteria", {})
+        self.speaker.filter_tracks(criteria)
+        self.force_update_ha_state()
+
+    def service_get_history(self, **kwargs: Any) -> dict[str, Any]:
+        """Get recently played tracks with metadata."""
+        limit = kwargs.get("limit", 20)
+        history = self.speaker.get_history(limit=limit)
+        return {'result': history}
+
+    def service_play_from_history(self, **kwargs: Any) -> None:
+        """Play a track from playback history by index."""
+        index = kwargs.get("index")
+        self.speaker.play_from_history(index)
+
+    def service_create_playlist(self, **kwargs: Any) -> None:
+        """Create a new playlist from the current queue."""
+        name = kwargs.get("name")
+        self.speaker.create_playlist(name)
+        self.force_update_ha_state()
+
+    def service_delete_playlist(self, **kwargs: Any) -> None:
+        """Delete a playlist from the Mopidy server."""
+        uri = kwargs.get("uri")
+        self.speaker.delete_playlist(uri)
+        self.force_update_ha_state()
+
+    def service_save_playlist(self, **kwargs: Any) -> None:
+        """Save the current queue to an existing playlist."""
+        uri = kwargs.get("uri")
+        self.speaker.save_playlist(uri)
+        self.force_update_ha_state()
+
+    def service_refresh_playlists(self, **kwargs: Any) -> None:
+        """Refresh the playlist list from the backend."""
+        self.speaker.refresh_playlists()
+        self.force_update_ha_state()
+
+    def service_lookup_track(self, **kwargs: Any) -> dict[str, Any]:
+        """Get detailed track metadata for a track URI."""
+        uri = kwargs.get("uri")
+        metadata = self.speaker.lookup_track(uri)
+        return {'result': metadata}
+
+    def service_find_exact(self, **kwargs: Any) -> dict[str, Any]:
+        """Find tracks matching exact criteria."""
+        query = kwargs.get("query", {})
+        track_uris = self.speaker.find_exact(query)
+        return {'result': track_uris}
 
     def set_repeat(self, repeat: RepeatMode) -> None:
         """Set repeat mode."""
@@ -558,6 +735,20 @@ class MopidyMediaPlayerEntity(MediaPlayerEntity):
     def unique_id(self) -> str:
         """Return the unique id for the entity."""
         return self.device_uuid
+
+    @property
+    def media_history(self) -> list[dict[str, Any]]:
+        """Return the last N played tracks (default 20) with metadata.
+        
+        Returns:
+            List of history entries, each with URI, artist, album, track_name, timestamp.
+            Index 0 is the most recently played track.
+        """
+        try:
+            return self.speaker.get_history(limit=20)
+        except Exception:
+            # If history retrieval fails, return empty list
+            return []
 
     def update(self) -> None:
         """Get the latest data and update the state."""

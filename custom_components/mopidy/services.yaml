@@ -146,3 +146,214 @@ set_consume_mode:
       default: false
       selector:
         boolean:
+
+move_track:
+  name: Move track
+  description:
+    Reorder tracks in the queue by moving a track from one position to another.
+    Positions are 1-based (first track is position 1).
+  target:
+    entity:
+      integration: mopidy
+      domain: media_player
+  fields:
+    from_position:
+      name: Source position
+      description: The current position of the track to move (1-based)
+      example: 1
+      required: true
+      selector:
+        number:
+          min: 1
+          step: 1
+    to_position:
+      name: Destination position
+      description: The target position for the track (1-based)
+      example: 5
+      required: true
+      selector:
+        number:
+          min: 1
+          step: 1
+
+remove_track:
+  name: Remove track
+  description:
+    Remove one or more tracks from the queue by position(s).
+    Positions are 1-based (first track is position 1).
+    You can specify either a single position or multiple positions.
+  target:
+    entity:
+      integration: mopidy
+      domain: media_player
+  fields:
+    position:
+      name: Single position
+      description: Position of the track to remove (1-based)
+      example: 2
+      selector:
+        number:
+          min: 1
+          step: 1
+    positions:
+      name: Multiple positions
+      description: List of positions to remove (1-based)
+      example: [1, 3, 5]
+      selector:
+        object:
+
+filter_tracks:
+  name: Filter tracks
+  description:
+    Remove tracks from the queue matching specified criteria.
+    When multiple criteria are provided, tracks must match ALL criteria (AND logic).
+    Matching is case-insensitive.
+  target:
+    entity:
+      integration: mopidy
+      domain: media_player
+  fields:
+    criteria:
+      name: Filter criteria
+      description: Dictionary with optional artist, album, genre, and track_name fields
+      required: true
+      selector:
+        object:
+
+get_history:
+  name: Get history
+  description:
+    Retrieve recently played tracks with metadata.
+    Returns the most recently played tracks first (index 0 = most recent).
+  target:
+    entity:
+      integration: mopidy
+      domain: media_player
+  fields:
+    limit:
+      name: Maximum number of tracks
+      description: Maximum number of tracks to return
+      example: 20
+      default: 20
+      selector:
+        number:
+          min: 1
+          step: 1
+
+play_from_history:
+  name: Play from history
+  description:
+    Play a track from playback history by index.
+    Index 0 is the most recently played track.
+  target:
+    entity:
+      integration: mopidy
+      domain: media_player
+  fields:
+    index:
+      name: History index
+      description: Index of the track in history (0 = most recent)
+      example: 0
+      required: true
+      selector:
+        number:
+          min: 0
+          step: 1
+
+create_playlist:
+  name: Create playlist
+  description:
+    Create a new playlist from the current queue.
+    If a playlist with the same name already exists, it will be overwritten.
+  target:
+    entity:
+      integration: mopidy
+      domain: media_player
+  fields:
+    name:
+      name: Playlist name
+      description: Name for the new playlist
+      example: "My Playlist"
+      required: true
+      selector:
+        text:
+
+delete_playlist:
+  name: Delete playlist
+  description:
+    Delete a playlist from the Mopidy server.
+  target:
+    entity:
+      integration: mopidy
+      domain: media_player
+  fields:
+    uri:
+      name: Playlist URI
+      description: URI of the playlist to delete
+      example: "m3u:My Playlist.m3u"
+      required: true
+      selector:
+        text:
+
+save_playlist:
+  name: Save playlist
+  description:
+    Save the current queue to an existing playlist.
+    This will replace the playlist contents with the current queue.
+  target:
+    entity:
+      integration: mopidy
+      domain: media_player
+  fields:
+    uri:
+      name: Playlist URI
+      description: URI of the playlist to save to
+      example: "m3u:My Playlist.m3u"
+      required: true
+      selector:
+        text:
+
+refresh_playlists:
+  name: Refresh playlists
+  description:
+    Refresh the playlist list from the backend.
+    Use this after playlists have been modified externally.
+  target:
+    entity:
+      integration: mopidy
+      domain: media_player
+
+lookup_track:
+  name: Lookup track
+  description:
+    Get detailed track metadata for a track URI.
+    Returns complete track information including artist, album, duration, genre, and other available fields.
+  target:
+    entity:
+      integration: mopidy
+      domain: media_player
+  fields:
+    uri:
+      name: Track URI
+      description: URI of the track to lookup
+      example: "local:track:Artist/Album/Track.mp3"
+      required: true
+      selector:
+        text:
+
+find_exact:
+  name: Find exact
+  description:
+    Find tracks matching exact criteria (case-insensitive full string match).
+    When multiple criteria are provided, tracks must match ALL criteria (AND logic).
+  target:
+    entity:
+      integration: mopidy
+      domain: media_player
+  fields:
+    query:
+      name: Query criteria
+      description: Dictionary with optional artist, album, and track_name fields
+      required: true
+      selector:
+        object:

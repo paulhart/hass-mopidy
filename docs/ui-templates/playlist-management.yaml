@@ -1,0 +1,234 @@
+# Mopidy Playlist Management Template
+#
+# This template provides a visual interface for managing Mopidy playlists.
+# Features: create playlists from queue, save queue to playlists, delete playlists, refresh playlist list
+#
+# SETUP INSTRUCTIONS:
+# 1. **IMPORTANT**: Replace "media_player.mopidy_entity" with your actual Mopidy entity ID throughout this file
+#    - Search and replace all occurrences of "media_player.mopidy_entity" with your entity ID (e.g., "media_player.mopidy_living_room")
+# 2. Ensure helper entities are configured (see helpers.yaml in this directory)
+#    - Required: input_text.mopidy_playlist_name, input_text.mopidy_save_playlist_uri, input_text.mopidy_delete_playlist_uri
+# 3. Copy this card configuration into your Home Assistant dashboard
+#    - Add as a new card in YAML mode, or use the card editor
+#
+# RESPONSIVE DESIGN:
+# - Uses vertical-stack for mobile-friendly layout
+# - All controls are touch-friendly and accessible on mobile devices (320px+)
+# - Works on screen widths from 320px (mobile) to desktop sizes
+
+type: vertical-stack
+cards:
+  # Playlist List Display
+  - type: template
+    title: Available Playlists
+    content: |
+      {% set entity = 'media_player.mopidy_entity' %}
+      {% set playlists = state_attr(entity, 'source_list') | default([]) %}
+      {% set entity_state = states(entity) %}
+      
+      {% if entity_state == 'unavailable' %}
+        <div class="error" style="color: red; padding: 10px;">
+          ⚠️ Mopidy server is unavailable. Please check your connection.
+        </div>
+      {% elif playlists | length == 0 %}
+        <div class="info" style="color: blue; padding: 10px;">
+          📭 No playlists available. Create a playlist from your queue to get started.
+        </div>
+      {% else %}
+        <div style="padding: 10px;">
+          <p><strong>Available Playlists:</strong> {{ playlists | length }} playlists</p>
+          <div style="max-height: 300px; overflow-y: auto; margin-top: 10px;">
+            {% for playlist_uri in playlists %}
+              {% set playlist_name = playlist_uri.split(':')[-1] if ':' in playlist_uri else playlist_uri %}
+              <div style="border: 1px solid var(--divider-color); padding: 8px; margin: 5px 0; border-radius: 4px; background-color: var(--card-background-color);">
+                <div style="font-weight: bold; font-size: 14px;">{{ playlist_name }}</div>
+                <div style="font-size: 11px; color: var(--disabled-text-color); margin-top: 2px;">URI: {{ playlist_uri }}</div>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      {% endif %}
+
+  # Create Playlist Section
+  - type: entities
+    title: Create Playlist from Queue
+    entities:
+      - entity: input_text.mopidy_playlist_name
+        name: "Playlist Name"
+      - type: button
+        name: "Create Playlist"
+        tap_action:
+          action: call-service
+          service: mopidy.create_playlist
+          service_data:
+            entity_id: media_player.mopidy_entity
+            name: "{{ states('input_text.mopidy_playlist_name') }}"
+        show_state: false
+    card_mod:
+      style: |
+        ha-card {
+          {% set queue_size = state_attr('media_player.mopidy_entity', 'queue_size') | int(0) %}
+          {% set playlist_name = states('input_text.mopidy_playlist_name') | trim %}
+          {% if queue_size == 0 or not playlist_name %}
+            opacity: 0.6;
+          {% endif %}
+        }
+
+  # Create Playlist Validation
+  - type: template
+    content: |
+      {% set queue_size = state_attr('media_player.mopidy_entity', 'queue_size') | int(0) %}
+      {% set playlist_name = states('input_text.mopidy_playlist_name') | trim %}
+      
+      {% if queue_size == 0 %}
+        <div class="error" style="color: red; padding: 5px;">
+          ❌ Queue is empty. Add tracks to the queue before creating a playlist.
+        </div>
+      {% elif not playlist_name %}
+        <div class="error" style="color: red; padding: 5px;">
+          ❌ Playlist name is required. Enter a name for the playlist.
+        </div>
+      {% else %}
+        <div class="info" style="color: blue; padding: 5px;">
+          ℹ️ Ready to create playlist "{{ playlist_name }}" from {{ queue_size }} track(s) in queue.
+          {% set playlists = state_attr('media_player.mopidy_entity', 'source_list') | default([]) %}
+          {% set playlist_uri = 'm3u:' + playlist_name %}
+          {% if playlist_uri in playlists %}
+            <br><em>Note: A playlist with this name already exists and will be overwritten.</em>
+          {% endif %}
+        </div>
+      {% endif %}
+
+  # Save to Playlist Section
+  - type: template
+    title: Save Queue to Playlist
+    content: |
+      {% set entity = 'media_player.mopidy_entity' %}
+      {% set playlists = state_attr(entity, 'source_list') | default([]) %}
+      {% set queue_size = state_attr(entity, 'queue_size') | int(0) %}
+      
+      {% if queue_size == 0 %}
+        <div class="error" style="color: red; padding: 10px;">
+          ❌ Queue is empty. Add tracks to the queue before saving to a playlist.
+        </div>
+      {% elif playlists | length == 0 %}
+        <div class="info" style="color: blue; padding: 10px;">
+          ℹ️ No playlists available. Create a playlist first.
+        </div>
+      {% else %}
+        <div style="padding: 10px;">
+          <p><em>Select a playlist from the list below to save the current queue ({{ queue_size }} tracks) to it.</em></p>
+          <p style="font-size: 12px; color: var(--secondary-text-color);">
+            <strong>Warning:</strong> This will replace the existing playlist contents with the current queue.
+          </p>
+        </div>
+      {% endif %}
+
+  # Save to Playlist - Instructions
+  - type: markdown
+    content: |
+      **To save queue to a playlist:**
+      1. Find the playlist URI from the list above (e.g., "m3u:My Playlist")
+      2. Enter the playlist URI in the input below
+      3. Click "Save Queue to Playlist" button
+      
+      **Note:** This will replace the existing playlist contents with the current queue.
+
+  # Save to Playlist Input
+  # Note: Add input_text.mopidy_save_playlist_uri helper to helpers.yaml or use existing input_text helper
+  - type: entities
+    title: Save Queue to Playlist
+    entities:
+      - entity: input_text.mopidy_save_playlist_uri
+        name: "Playlist URI (e.g., m3u:My Playlist)"
+      - type: button
+        name: "Save Queue to Playlist"
+        tap_action:
+          action: call-service
+          service: mopidy.save_playlist
+          service_data:
+            entity_id: media_player.mopidy_entity
+            uri: "{{ states('input_text.mopidy_save_playlist_uri') }}"
+        show_state: false
+
+  # Delete Playlist Section
+  - type: template
+    title: Delete Playlist
+    content: |
+      {% set entity = 'media_player.mopidy_entity' %}
+      {% set playlists = state_attr(entity, 'source_list') | default([]) %}
+      
+      {% if playlists | length == 0 %}
+        <div class="info" style="color: blue; padding: 10px;">
+          ℹ️ No playlists available to delete.
+        </div>
+      {% else %}
+        <div style="padding: 10px;">
+          <p><em>Select a playlist from the list below to delete it.</em></p>
+          <p style="font-size: 12px; color: var(--warning-color);">
+            <strong>Warning:</strong> This action cannot be undone. The playlist will be permanently deleted.
+          </p>
+        </div>
+      {% endif %}
+
+  # Delete Playlist - Instructions
+  - type: markdown
+    content: |
+      **To delete a playlist:**
+      1. Find the playlist URI from the list above (e.g., "m3u:My Playlist")
+      2. Enter the playlist URI in the input below
+      3. Click "Delete Playlist" button (confirmation required)
+      
+      **Warning:** This action cannot be undone. The playlist will be permanently deleted.
+
+  # Delete Playlist Input
+  # Note: Add input_text.mopidy_delete_playlist_uri helper to helpers.yaml or use existing input_text helper
+  - type: entities
+    title: Delete Playlist
+    entities:
+      - entity: input_text.mopidy_delete_playlist_uri
+        name: "Playlist URI (e.g., m3u:My Playlist)"
+      - type: button
+        name: "Delete Playlist"
+        confirmation: "Are you sure you want to delete this playlist? This cannot be undone."
+        tap_action:
+          action: call-service
+          service: mopidy.delete_playlist
+          service_data:
+            entity_id: media_player.mopidy_entity
+            uri: "{{ states('input_text.mopidy_delete_playlist_uri') }}"
+        show_state: false
+
+  # Refresh Playlists Button
+  - type: button
+    name: "Refresh Playlist List"
+    icon: mdi:refresh
+    tap_action:
+      action: call-service
+      service: mopidy.refresh_playlists
+      service_data:
+        entity_id: media_player.mopidy_entity
+    show_state: false
+
+  # Refresh Entity Button (after playlist operations)
+  - type: button
+    name: "Refresh Entity State"
+    icon: mdi:refresh
+    tap_action:
+      action: call-service
+      service: homeassistant.update_entity
+      service_data:
+        entity_id: media_player.mopidy_entity
+    show_state: false
+
+# NOTES:
+# - Replace "media_player.mopidy_entity" with your actual Mopidy entity ID throughout this file
+# - Playlist names are extracted from URIs (e.g., "m3u:My Playlist" → "My Playlist")
+# - Creating a playlist with an existing name will overwrite the existing playlist
+# - Saving to a playlist replaces the playlist contents with the current queue
+# - Deleting a playlist requires confirmation (button confirmation dialog)
+# - After playlist operations, refresh the entity state to see updated playlist list
+# - For save/delete operations, copy the playlist URI from the playlist list above
+# - Helper entities for playlist URI input can be added to helpers.yaml if desired
+# - This template is responsive and works on mobile devices (320px+ screen width)
+
