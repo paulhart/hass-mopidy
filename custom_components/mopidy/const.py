@@ -1,7 +1,7 @@
 """Constants for the Mopidy integration."""
 from collections import OrderedDict
 
-DOMAIN = "mopidy"
+DOMAIN = "mopidy-enhanced"
 ICON = "mdi:speaker-wireless"
 DEFAULT_NAME = "Mopidy Enhanced"
 DEFAULT_PORT = 6680
