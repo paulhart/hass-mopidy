@@ -1,0 +1,121 @@
+# Mopidy Enhanced Media Player Card Template
+#
+# This template provides an enhanced media player card with quick access to queue and history features.
+# Features: queue size display, quick links to queue management and history interfaces
+#
+# SETUP INSTRUCTIONS:
+# 1. **IMPORTANT**: Replace "media_player.mopidy_entity" with your actual Mopidy entity ID throughout this file
+#    - Search and replace all occurrences of "media_player.mopidy_entity" with your entity ID (e.g., "media_player.mopidy_living_room")
+# 2. Copy this card configuration into your Home Assistant dashboard
+#    - Add as a new card in YAML mode, or use the card editor
+# 3. This card can be used alongside or instead of the standard media player card
+# 4. For navigation buttons to work, create dashboard views:
+#    - Create a view named "Queue Management" containing the queue-management.yaml template
+#    - Create a view named "Playback History" containing the playback-history.yaml template
+#    - Update navigation_path values to match your view paths
+#
+# RESPONSIVE DESIGN:
+# - Uses vertical-stack for mobile-friendly layout
+# - All controls are touch-friendly and accessible on mobile devices (320px+)
+# - Queue size is displayed prominently for quick reference
+# - Grid layout for buttons adapts to screen size (2 columns on desktop, 1 on mobile)
+# - Works on screen widths from 320px (mobile) to desktop sizes
+
+type: vertical-stack
+cards:
+  # Standard Media Player Card
+  - type: media-control
+    entity: media_player.mopidy_entity
+
+  # Queue Information and Quick Actions
+  - type: template
+    title: Queue & History
+    content: |
+      {% set entity = 'media_player.mopidy_entity' %}
+      {% set queue_size = state_attr(entity, 'queue_size') | int(0) %}
+      {% set queue_position = state_attr(entity, 'queue_position') | int(0) %}
+      {% set entity_state = states(entity) %}
+      
+      {% if entity_state == 'unavailable' %}
+        <div class="error" style="color: red; padding: 10px;">
+          ⚠️ Mopidy server is unavailable
+        </div>
+      {% else %}
+        <div style="padding: 10px;">
+          <div style="font-size: 16px; font-weight: bold; margin-bottom: 10px;">
+            Queue: {{ queue_size }} track(s)
+            {% if queue_position > 0 %}
+              (Playing: {{ queue_position }}/{{ queue_size }})
+            {% endif %}
+          </div>
+          {% if queue_size == 0 %}
+            <div style="color: var(--secondary-text-color); font-size: 12px; margin-bottom: 10px;">
+              Queue is empty. Add tracks to manage them.
+            </div>
+          {% endif %}
+        </div>
+      {% endif %}
+
+  # Quick Action Buttons
+  - type: grid
+    columns: 2
+    square: false
+    cards:
+      - type: button
+        name: "Manage Queue"
+        icon: mdi:playlist-edit
+        tap_action:
+          action: navigate
+          navigation_path: /lovelace/queue-management
+        show_state: false
+        card_mod:
+          style: |
+            ha-card {
+              {% set queue_size = state_attr('media_player.mopidy_entity', 'queue_size') | int(0) %}
+              {% if queue_size == 0 %}
+                opacity: 0.6;
+              {% endif %}
+            }
+      - type: button
+        name: "View History"
+        icon: mdi:history
+        tap_action:
+          action: navigate
+          navigation_path: /lovelace/playback-history
+        show_state: false
+
+# ALTERNATIVE: Inline Integration (if you want queue/history embedded in the same view)
+# Uncomment the section below and comment out the navigation buttons above to embed interfaces inline:
+#
+#  - type: custom:fold-entity-row
+#     head:
+#       type: section
+#       label: Queue Management
+#     entities:
+#       - type: custom:hui-card
+#         card:
+#           type: vertical-stack
+#           cards:
+#             # Include queue-management.yaml cards here
+#
+#  - type: custom:fold-entity-row
+#     head:
+#       type: section
+#       label: Playback History
+#     entities:
+#       - type: custom:hui-card
+#         card:
+#           type: vertical-stack
+#           cards:
+#             # Include playback-history.yaml cards here
+
+# NOTES:
+# - Replace "media_player.mopidy_entity" with your actual Mopidy entity ID throughout this file
+# - Navigation paths (/lovelace/queue-management, /lovelace/playback-history) should point to views containing the respective templates
+# - Alternatively, use the inline integration approach to embed queue/history interfaces directly
+# - Queue size is displayed prominently for quick reference
+# - "Manage Queue" button may be visually disabled when queue is empty (opacity reduced)
+# - This template is responsive and works on mobile devices (320px+ screen width)
+# - The media-control card provides standard playback controls (play, pause, next, previous, volume)
+# - For inline integration, you'll need to copy the card configurations from queue-management.yaml and playback-history.yaml
+

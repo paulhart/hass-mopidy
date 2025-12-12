@@ -1,0 +1,126 @@
+# Helper Entities Configuration for Mopidy UI Templates
+#
+# This file contains example configuration for Home Assistant helper entities
+# that are used by the Mopidy UI templates for user input.
+#
+# To use these helpers:
+# 1. Copy the relevant helper definitions to your Home Assistant configuration.yaml
+# 2. Or add them via the Home Assistant UI: Settings -> Devices & Services -> Helpers
+# 3. Restart Home Assistant to activate the helpers
+# 4. Update the template files to reference these helper entity IDs
+#
+# Note: Replace "mopidy" prefix with your preferred naming convention if desired
+
+# Queue Management Helpers
+# These helpers are used for queue position inputs (1-based positions)
+
+input_number:
+  # Source position for moving tracks (from_position)
+  mopidy_queue_from_position:
+    name: "Queue Source Position"
+    min: 1
+    max: 100  # Adjust based on typical queue size; templates will validate against actual queue_size
+    step: 1
+    mode: box
+    unit_of_measurement: "position"
+
+  # Destination position for moving tracks (to_position)
+  mopidy_queue_to_position:
+    name: "Queue Destination Position"
+    min: 1
+    max: 100  # Adjust based on typical queue size; templates will validate against actual queue_size
+    step: 1
+    mode: box
+    unit_of_measurement: "position"
+
+  # Position for removing tracks
+  mopidy_queue_remove_position:
+    name: "Queue Remove Position"
+    min: 1
+    max: 100  # Adjust based on typical queue size; templates will validate against actual queue_size
+    step: 1
+    mode: box
+    unit_of_measurement: "position"
+
+  # History index for playing from history (1-based, 1 = most recent)
+  mopidy_history_index:
+    name: "History Track Index"
+    min: 1
+    max: 20  # Default history limit is 20 tracks
+    step: 1
+    mode: box
+    unit_of_measurement: "index"
+
+# Filter Criteria Helpers
+# These helpers are used for filter track operations (case-insensitive substring match)
+
+input_text:
+  # Artist filter for removing tracks
+  mopidy_filter_artist:
+    name: "Filter by Artist"
+    max: 100
+    initial: ""
+
+  # Album filter for removing tracks
+  mopidy_filter_album:
+    name: "Filter by Album"
+    max: 100
+    initial: ""
+
+  # Genre filter for removing tracks
+  mopidy_filter_genre:
+    name: "Filter by Genre"
+    max: 50
+    initial: ""
+
+  # Track name filter for removing tracks
+  mopidy_filter_track_name:
+    name: "Filter by Track Name"
+    max: 100
+    initial: ""
+
+  # Playlist name for creating new playlists
+  mopidy_playlist_name:
+    name: "Playlist Name"
+    max: 200
+    initial: ""
+
+  # Playlist URI for save/delete operations
+  mopidy_save_playlist_uri:
+    name: "Playlist URI (Save)"
+    max: 200
+    initial: ""
+
+  # Playlist URI for delete operations
+  mopidy_delete_playlist_uri:
+    name: "Playlist URI (Delete)"
+    max: 200
+    initial: ""
+
+# Usage Notes:
+#
+# 1. Queue Position Helpers (input_number):
+#    - Positions are 1-based (first track is position 1)
+#    - Templates will validate positions against actual queue_size attribute
+#    - Max values can be adjusted based on your typical queue sizes
+#
+# 2. Filter Criteria Helpers (input_text):
+#    - All filters use case-insensitive substring matching
+#    - Multiple criteria use AND logic (all must match)
+#    - Empty fields are ignored (not used in filter)
+#
+# 3. History Index Helper (input_number):
+#    - Index is 1-based (1 = most recently played track)
+#    - Max value of 20 matches default history limit
+#    - Adjust max if you change history limit in service calls
+#
+# 4. Playlist Name Helper (input_text):
+#    - Used when creating new playlists from queue
+#    - If playlist with same name exists, it will be overwritten
+#    - Must be non-empty for create operation
+#
+# 5. Entity ID References in Templates:
+#    - Templates reference these helpers using: states('input_number.mopidy_queue_from_position')
+#    - Replace "mopidy" prefix in helper names if you use different naming
+#    - Update template files to match your helper entity IDs
+

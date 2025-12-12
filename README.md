@@ -182,6 +182,58 @@ proxying them through Home Assistant is very resource intensive,
 causing delays. Therefore, I have decided to not proxy the art when
 using the Media Library for the time being.
 
+### UI Templates
+
+UI templates for enhanced queue management, playback history, and playlist management are available in the `docs/ui-templates/` directory.
+
+#### Available Templates
+
+- **Queue Management** (`queue-management.yaml`): Reorder, remove, and filter tracks in the playback queue
+- **Playback History** (`playback-history.yaml`): View recently played tracks and replay them
+- **Playlist Management** (`playlist-management.yaml`): Create, save, and delete playlists
+- **Enhanced Media Player** (`media-player-enhanced.yaml`): Media player card with quick access to queue and history
+
+#### Setup Instructions
+
+1. **Configure Helper Entities**: Copy helper entity definitions from `docs/ui-templates/helpers.yaml` to your Home Assistant `configuration.yaml` or add them via the UI (Settings -> Devices & Services -> Helpers)
+
+2. **Copy Templates to Dashboard**: 
+   - Open your Home Assistant dashboard in edit mode
+   - Add a new card and select "Manual" or "YAML" mode
+   - Copy the contents of a template file (e.g., `queue-management.yaml`)
+   - Replace `media_player.mopidy_entity` with your actual Mopidy entity ID
+   - Save the dashboard
+
+3. **Create Dashboard Views** (Optional): For navigation from the enhanced media player card, create separate views:
+   - Create a view named "Queue Management" and add the queue-management.yaml template
+   - Create a view named "Playback History" and add the playback-history.yaml template
+
+#### Template Customization
+
+All templates use standard Lovelace cards and can be customized:
+- Modify colors, fonts, and spacing by editing the inline styles
+- Adjust responsive layout by changing grid columns or vertical-stack configuration
+- Add or remove features by editing the card structure
+
+#### Troubleshooting
+
+**Templates not loading:**
+- Check YAML syntax (use a YAML validator)
+- Verify entity IDs are correct (replace `media_player.mopidy_entity` with your entity)
+- Check Home Assistant logs for template errors
+
+**Service calls not working:**
+- Verify the Mopidy integration (002-mopidy-enhanced-services) is installed and up to date
+- Check that helper entities are configured correctly
+- Verify entity state is not "unavailable"
+
+**Helper entities not found:**
+- Ensure helper entities are added to `configuration.yaml` or created via UI
+- Restart Home Assistant after adding helpers
+- Verify helper entity IDs match those used in templates
+
+For more details, see the comments in each template file.
+
 ## Testers
 
 - [Jan Gutowski](https://github.com/Switch123456789)

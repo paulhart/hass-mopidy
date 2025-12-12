@@ -1,0 +1,220 @@
+# Mopidy Queue Management Template
+#
+# This template provides a visual interface for managing the Mopidy playback queue.
+# Features: reorder tracks, remove tracks, filter tracks by criteria
+#
+# SETUP INSTRUCTIONS:
+# 1. **IMPORTANT**: Replace "media_player.mopidy_entity" with your actual Mopidy entity ID throughout this file
+#    - Search and replace all occurrences of "media_player.mopidy_entity" with your entity ID (e.g., "media_player.mopidy_living_room")
+# 2. Ensure helper entities are configured (see helpers.yaml in this directory)
+#    - Add helper entities to your Home Assistant configuration.yaml or create them via UI
+# 3. Copy this card configuration into your Home Assistant dashboard
+#    - Add as a new card in YAML mode, or use the card editor
+# 4. Adjust responsive layout if needed (currently uses vertical-stack for mobile compatibility)
+#
+# RESPONSIVE DESIGN:
+# - Uses vertical-stack for mobile-friendly single-column layout
+# - All controls are touch-friendly and accessible on mobile devices (320px+)
+# - Text wraps appropriately for long queue information
+# - Works on screen widths from 320px (mobile) to desktop sizes
+
+type: vertical-stack
+cards:
+  # Queue State Display
+  - type: template
+    title: Queue Status
+    content: |
+      {% set entity = 'media_player.mopidy_entity' %}
+      {% set queue_size = state_attr(entity, 'queue_size') | int(0) %}
+      {% set queue_position = state_attr(entity, 'queue_position') | int(0) %}
+      {% set entity_state = states(entity) %}
+      
+      {% if entity_state == 'unavailable' %}
+        <div class="error" style="color: red; padding: 10px;">
+          ⚠️ Mopidy server is unavailable. Please check your connection.
+        </div>
+      {% elif queue_size == 0 %}
+        <div class="warning" style="color: orange; padding: 10px;">
+          📭 Queue is empty. Add tracks to the queue to manage them.
+        </div>
+      {% else %}
+        <div style="padding: 10px;">
+          <h3>Queue Information</h3>
+          <p><strong>Total Tracks:</strong> {{ queue_size }}</p>
+          <p><strong>Currently Playing:</strong> Position {{ queue_position }} of {{ queue_size }}</p>
+          {% if queue_position > 0 and queue_position <= queue_size %}
+            <p style="color: green;">▶️ Track at position {{ queue_position }} is currently playing</p>
+          {% endif %}
+        </div>
+      {% endif %}
+
+  # Move Track Section
+  - type: entities
+    title: Reorder Tracks
+    entities:
+      - entity: input_number.mopidy_queue_from_position
+        name: "Source Position"
+      - entity: input_number.mopidy_queue_to_position
+        name: "Destination Position"
+      - type: button
+        name: "Move Track"
+        tap_action:
+          action: call-service
+          service: mopidy.move_track
+          service_data:
+            entity_id: media_player.mopidy_entity
+            from_position: "{{ states('input_number.mopidy_queue_from_position') | int }}"
+            to_position: "{{ states('input_number.mopidy_queue_to_position') | int }}"
+        show_state: false
+    card_mod:
+      style: |
+        ha-card {
+          {% set queue_size = state_attr('media_player.mopidy_entity', 'queue_size') | int(0) %}
+          {% set from_pos = states('input_number.mopidy_queue_from_position') | int(0) %}
+          {% set to_pos = states('input_number.mopidy_queue_to_position') | int(0) %}
+          {% if queue_size == 0 or from_pos < 1 or from_pos > queue_size or to_pos < 1 or to_pos > queue_size %}
+            opacity: 0.6;
+          {% endif %}
+        }
+
+  # Move Track Validation Message
+  - type: template
+    content: |
+      {% set queue_size = state_attr('media_player.mopidy_entity', 'queue_size') | int(0) %}
+      {% set from_pos = states('input_number.mopidy_queue_from_position') | int(0) %}
+      {% set to_pos = states('input_number.mopidy_queue_to_position') | int(0) %}
+      
+      {% if queue_size > 0 %}
+        {% if from_pos < 1 or from_pos > queue_size %}
+          <div class="error" style="color: red; padding: 5px;">
+            ❌ Invalid source position: must be between 1 and {{ queue_size }}
+          </div>
+        {% elif to_pos < 1 or to_pos > queue_size %}
+          <div class="error" style="color: red; padding: 5px;">
+            ❌ Invalid destination position: must be between 1 and {{ queue_size }}
+          </div>
+        {% elif from_pos == to_pos %}
+          <div class="info" style="color: blue; padding: 5px;">
+            ℹ️ Source and destination positions are the same
+          </div>
+        {% else %}
+          <div class="success" style="color: green; padding: 5px;">
+            ✓ Ready to move track from position {{ from_pos }} to position {{ to_pos }}
+          </div>
+        {% endif %}
+      {% endif %}
+
+  # Remove Track Section
+  - type: entities
+    title: Remove Track
+    entities:
+      - entity: input_number.mopidy_queue_remove_position
+        name: "Position to Remove"
+      - type: button
+        name: "Remove Track"
+        tap_action:
+          action: call-service
+          service: mopidy.remove_track
+          service_data:
+            entity_id: media_player.mopidy_entity
+            position: "{{ states('input_number.mopidy_queue_remove_position') | int }}"
+        show_state: false
+    card_mod:
+      style: |
+        ha-card {
+          {% set queue_size = state_attr('media_player.mopidy_entity', 'queue_size') | int(0) %}
+          {% set remove_pos = states('input_number.mopidy_queue_remove_position') | int(0) %}
+          {% if queue_size == 0 or remove_pos < 1 or remove_pos > queue_size %}
+            opacity: 0.6;
+          {% endif %}
+        }
+
+  # Remove Track Validation Message
+  - type: template
+    content: |
+      {% set queue_size = state_attr('media_player.mopidy_entity', 'queue_size') | int(0) %}
+      {% set remove_pos = states('input_number.mopidy_queue_remove_position') | int(0) %}
+      
+      {% if queue_size > 0 %}
+        {% if remove_pos < 1 or remove_pos > queue_size %}
+          <div class="error" style="color: red; padding: 5px;">
+            ❌ Invalid position: must be between 1 and {{ queue_size }}
+          </div>
+        {% else %}
+          <div class="warning" style="color: orange; padding: 5px;">
+            ⚠️ Ready to remove track at position {{ remove_pos }}
+          </div>
+        {% endif %}
+      {% endif %}
+
+  # Filter Tracks Section
+  - type: entities
+    title: Filter Tracks (Remove Matching)
+    entities:
+      - entity: input_text.mopidy_filter_artist
+        name: "Artist"
+      - entity: input_text.mopidy_filter_album
+        name: "Album"
+      - entity: input_text.mopidy_filter_genre
+        name: "Genre"
+      - entity: input_text.mopidy_filter_track_name
+        name: "Track Name"
+      - type: button
+        name: "Remove Matching Tracks"
+        tap_action:
+          action: call-service
+          service: mopidy.filter_tracks
+          service_data:
+            entity_id: media_player.mopidy_entity
+            criteria:
+              artist: "{{ states('input_text.mopidy_filter_artist') }}"
+              album: "{{ states('input_text.mopidy_filter_album') }}"
+              genre: "{{ states('input_text.mopidy_filter_genre') }}"
+              track_name: "{{ states('input_text.mopidy_filter_track_name') }}"
+        show_state: false
+
+  # Filter Validation Message
+  - type: template
+    content: |
+      {% set artist = states('input_text.mopidy_filter_artist') | trim %}
+      {% set album = states('input_text.mopidy_filter_album') | trim %}
+      {% set genre = states('input_text.mopidy_filter_genre') | trim %}
+      {% set track_name = states('input_text.mopidy_filter_track_name') | trim %}
+      {% set queue_size = state_attr('media_player.mopidy_entity', 'queue_size') | int(0) %}
+      
+      {% if queue_size > 0 %}
+        {% if not artist and not album and not genre and not track_name %}
+          <div class="error" style="color: red; padding: 5px;">
+            ❌ At least one filter criteria must be provided (non-empty)
+          </div>
+        {% else %}
+          <div class="info" style="color: blue; padding: 5px;">
+            ℹ️ Will remove tracks matching:
+            {% if artist %}Artist: "{{ artist }}" {% endif %}
+            {% if album %}Album: "{{ album }}" {% endif %}
+            {% if genre %}Genre: "{{ genre }}" {% endif %}
+            {% if track_name %}Track: "{{ track_name }}" {% endif %}
+            (all provided criteria must match - AND logic, empty fields are ignored)
+          </div>
+        {% endif %}
+      {% endif %}
+
+  # Refresh Button
+  - type: button
+    name: "Refresh Queue"
+    icon: mdi:refresh
+    tap_action:
+      action: call-service
+      service: homeassistant.update_entity
+      service_data:
+        entity_id: media_player.mopidy_entity
+    show_state: false
+
+# NOTES:
+# - Replace "media_player.mopidy_entity" with your actual Mopidy entity ID throughout this file
+# - Helper entities (input_number, input_text) must be configured before using this template
+# - Position validation happens in templates; service calls will also validate on the backend
+# - Filter criteria use case-insensitive substring matching with AND logic
+# - All operations require manual refresh to see updated queue state (use Refresh button)
+# - This template is responsive and works on mobile devices (320px+ screen width)
+

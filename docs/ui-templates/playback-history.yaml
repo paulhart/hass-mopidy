@@ -1,0 +1,109 @@
+# Mopidy Playback History Template
+#
+# This template provides a visual interface for viewing and replaying recently played tracks.
+# Features: display history with metadata, replay tracks, format timestamps
+#
+# SETUP INSTRUCTIONS:
+# 1. **IMPORTANT**: Replace "media_player.mopidy_entity" with your actual Mopidy entity ID throughout this file
+#    - Search and replace all occurrences of "media_player.mopidy_entity" with your entity ID (e.g., "media_player.mopidy_living_room")
+# 2. Ensure helper entities are configured (see helpers.yaml in this directory)
+#    - The input_number.mopidy_history_index helper is required for replay functionality
+# 3. Copy this card configuration into your Home Assistant dashboard
+#    - Add as a new card in YAML mode, or use the card editor
+# 4. History is displayed from the media_history entity attribute (last 20 tracks by default)
+#
+# RESPONSIVE DESIGN:
+# - Uses vertical-stack for mobile-friendly scrolling
+# - All controls are touch-friendly and accessible on mobile devices (320px+)
+# - History list scrolls for long lists (max-height: 600px)
+# - Works on screen widths from 320px (mobile) to desktop sizes
+
+type: vertical-stack
+cards:
+  # History Header
+  - type: template
+    title: Playback History
+    content: |
+      {% set entity = 'media_player.mopidy_entity' %}
+      {% set history = state_attr(entity, 'media_history') | default([]) %}
+      {% set entity_state = states(entity) %}
+      
+      {% if entity_state == 'unavailable' %}
+        <div class="error" style="color: red; padding: 10px;">
+          ⚠️ Mopidy server is unavailable. Please check your connection.
+        </div>
+      {% elif history | length == 0 %}
+        <div class="info" style="color: blue; padding: 10px;">
+          📭 No playback history available yet. Start playing tracks to build history.
+        </div>
+      {% else %}
+        <div style="padding: 10px;">
+          <p><strong>Recently Played Tracks:</strong> {{ history | length }} tracks</p>
+          <p><em>Most recent tracks appear first. Click a track to replay it.</em></p>
+        </div>
+      {% endif %}
+
+  # History List
+  - type: template
+    title: History List
+    content: |
+      {% set entity = 'media_player.mopidy_entity' %}
+      {% set history = state_attr(entity, 'media_history') | default([]) %}
+      {% if history | length > 0 %}
+        <div style="max-height: 600px; overflow-y: auto;">
+          {% for entry in history %}
+            {% set track_name = entry.track_name | default('Unknown Track') %}
+            {% set artist = entry.artist | default('Unknown Artist') %}
+            {% set album = entry.album | default('Unknown Album') %}
+            {% set timestamp = entry.timestamp | default('') %}
+            {% set index = loop.index %}
+            {% set relative_time = timestamp | as_timestamp | timestamp_custom('%Y-%m-%d %H:%M', true) if timestamp else 'Unknown time' %}
+            {% set relative_time_short = timestamp | as_timestamp | relative_time if timestamp else 'Unknown time' %}
+            <div style="border: 1px solid var(--divider-color); padding: 10px; margin: 5px 0; border-radius: 4px; background-color: var(--card-background-color);">
+              <div style="font-weight: bold; font-size: 14px; margin-bottom: 4px;">{{ index }}. {{ track_name }}</div>
+              <div style="font-size: 12px; color: var(--secondary-text-color); margin-top: 2px;">Artist: {{ artist }}</div>
+              <div style="font-size: 12px; color: var(--secondary-text-color); margin-top: 2px;">Album: {{ album }}</div>
+              <div style="font-size: 11px; color: var(--disabled-text-color); margin-top: 4px;">{{ relative_time_short }} ({{ relative_time }})</div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div style="padding: 20px; text-align: center; color: var(--secondary-text-color);">
+          No playback history available yet.
+        </div>
+      {% endif %}
+
+  # Play from History - Instructions
+  - type: markdown
+    content: |
+      **To replay a track:**
+      1. Note the track number from the history list above
+      2. Enter the track number (1-{{ state_attr('media_player.mopidy_entity', 'media_history') | default([]) | length }}) in the input below
+      3. Click "Play from History" button
+
+  # Play from History Input
+  - type: entities
+    title: Replay Track
+    entities:
+      - entity: input_number.mopidy_history_index
+        name: "History Track Index"
+      - type: button
+        name: "Play from History"
+        tap_action:
+          action: call-service
+          service: mopidy.play_from_history
+          service_data:
+            entity_id: media_player.mopidy_entity
+            index: "{{ states('input_number.mopidy_history_index') | int }}"
+        show_state: false
+
+# NOTES:
+# - Replace "media_player.mopidy_entity" with your actual Mopidy entity ID throughout this file
+# - History is read from the media_history entity attribute (automatically updated by the integration)
+# - Index is 1-based (1 = most recently played track) for the play_from_history service
+# - Timestamps are formatted in human-readable format (relative time + absolute time)
+# - Missing metadata (artist, album) shows "Unknown Artist", "Unknown Album"
+# - History list scrolls for long lists (max-height: 600px with overflow)
+# - Use the input_number helper to enter track index for replay
+# - This template is responsive and works on mobile devices (320px+ screen width)
+
