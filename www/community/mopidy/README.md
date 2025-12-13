@@ -15,10 +15,10 @@ A custom Lovelace card for Home Assistant that provides an interactive queue man
 ### HACS (Recommended)
 
 1. Install [HACS](https://hacs.xyz) if you haven't already
-2. Go to HACS → Frontend
+2. Go to HACS → Dashboard
 3. Click the three dots menu (⋮) → Custom repositories
 4. Add this repository URL
-5. Select category: "Lovelace"
+5. Select category: "Dashboard"
 6. Click "ADD"
 7. Search for "Mopidy Queue Card" and install
 8. Refresh your browser
