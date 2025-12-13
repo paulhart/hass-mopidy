@@ -63,6 +63,13 @@ export class MopidyQueueCard extends LitElement {
   private _sortableInstance: Sortable | null = null;
   private _pendingOperations: Set<Promise<void>> = new Set();
 
+  public setConfig(config: MopidyQueueCardConfig): void {
+    if (!config.entity) {
+      throw new Error('Entity is required');
+    }
+    this.config = config;
+  }
+
   connectedCallback() {
     super.connectedCallback();
     this._subscribeEntities();

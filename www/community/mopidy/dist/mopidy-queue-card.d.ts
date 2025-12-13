@@ -52,6 +52,7 @@ export declare class MopidyQueueCard extends LitElement {
     private _unsubEntities?;
     private _sortableInstance;
     private _pendingOperations;
+    setConfig(config: MopidyQueueCardConfig): void;
     connectedCallback(): void;
     disconnectedCallback(): void;
     private _subscribeEntities;
