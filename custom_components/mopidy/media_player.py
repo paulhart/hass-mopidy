@@ -155,6 +155,10 @@ FIND_EXACT_SCHEMA = {
     },
 }
 
+PLAY_TRACK_AT_POSITION_SCHEMA = {
+    vol.Required("position"): cv.positive_int,
+}
+
 
 def media_source_filter(item: BrowseMedia):
     """Filter media sources."""
@@ -259,6 +263,11 @@ async def async_setup_entry(
         FIND_EXACT_SCHEMA,
         "service_find_exact",
         supports_response=SupportsResponse.ONLY,
+    )
+    platform.async_register_entity_service(
+        "play_track_at_position",
+        PLAY_TRACK_AT_POSITION_SCHEMA,
+        "service_play_track_at_position",
     )
 
 async def async_setup_platform(
@@ -482,6 +491,12 @@ class MopidyMediaPlayerEntity(MediaPlayerEntity):
         index = kwargs.get("index")
         self.speaker.play_from_history(index)
 
+    def service_play_track_at_position(self, **kwargs: Any) -> None:
+        """Play a track at a specific position without reordering the queue."""
+        position = kwargs.get("position")
+        self.speaker.play_track_at_position(position)
+        self.force_update_ha_state()
+
     def service_create_playlist(self, **kwargs: Any) -> None:
         """Create a new playlist from the current queue."""
         name = kwargs.get("name")
@@ -572,6 +587,12 @@ class MopidyMediaPlayerEntity(MediaPlayerEntity):
 
         if self.speaker.snapshot_taken_at is not None:
             attributes["snapshot_taken_at"] = self.speaker.snapshot_taken_at
+
+        # Add queue_tracks attribute with full track list
+        if self.speaker.queue is not None:
+            queue_tracks = self.speaker.queue.get_queue_tracks_array()
+            if queue_tracks:
+                attributes["queue_tracks"] = queue_tracks
 
         return attributes
 

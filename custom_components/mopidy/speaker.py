@@ -429,6 +429,10 @@ class MopidyQueue:
                 self.port
             )
             _LOGGER.debug(str(error))
+        
+        # Update queue tracks data by refreshing track list
+        # This ensures queue_tracks attribute has current data
+        self.update_tracks()
 
         if updater is not None:
             updater()
@@ -517,6 +521,68 @@ class MopidyQueue:
     def position(self):
         """Return the index of the currently playing track in the tracklist"""
         return self._attr_queue_position
+
+    def get_queue_tracks_array(self) -> list[dict[str, Any]]:
+        """Get queue tracks as array formatted for queue_tracks attribute.
+        
+        Returns:
+            List of track dictionaries with position (1-based), uri, title, artist, album, duration.
+            Tracks are ordered by position (index 0 = position 1).
+        """
+        if self.api is None:
+            return []
+        
+        try:
+            # Get tracks in order from tracklist
+            tl_tracks = self.api.tracklist.get_tl_tracks()
+        except reConnectionError:
+            # If connection fails, return empty array
+            return []
+        
+        if not tl_tracks:
+            return []
+        
+        tracks = []
+        for idx, tl_track in enumerate(tl_tracks):
+            position = idx + 1  # Convert 0-based index to 1-based position
+            tlid = tl_track.tlid if hasattr(tl_track, 'tlid') else None
+            
+            # Get track info from queue dictionary if available
+            track_info = self.queue.get(tlid, {}) if tlid and self.queue else {}
+            
+            # Get track object from tl_track
+            track = tl_track.track if hasattr(tl_track, 'track') else None
+            
+            # Extract metadata, preferring queue info, then track object
+            uri = track_info.get("uri") or (track.uri if track and hasattr(track, 'uri') else "")
+            title = track_info.get("title") or (track.name if track and hasattr(track, 'name') else None)
+            artist = track_info.get("artist") or (
+                ", ".join([a.name for a in track.artists]) 
+                if track and hasattr(track, 'artists') and track.artists 
+                else None
+            )
+            album = track_info.get("album_name") or (
+                track.album.name 
+                if track and hasattr(track, 'album') and hasattr(track.album, 'name') 
+                else None
+            )
+            duration = track_info.get("duration") or (
+                int(track.length / 1000) 
+                if track and hasattr(track, 'length') 
+                else None
+            )
+            
+            track_dict = {
+                "position": position,
+                "uri": uri,
+                "title": title,
+                "artist": artist,
+                "album": album,
+                "duration": duration,
+            }
+            tracks.append(track_dict)
+        
+        return tracks
 
 class MopidySpeaker:
     """Representation of Mopidy Speaker"""
@@ -1455,6 +1521,51 @@ class MopidySpeaker:
                 self.port
             )
             _LOGGER.debug("Connection error details: %s", str(error))
+            raise
+
+    def play_track_at_position(self, position: int) -> None:
+        """Play track at specific position without reordering queue.
+        
+        Args:
+            position: 1-based track position to play (first track = 1)
+            
+        Raises:
+            ValueError: If position is out of range or queue is empty
+            reConnectionError: If Mopidy server is unavailable
+        """
+        try:
+            queue_length = self.queue.size
+            if queue_length is None or queue_length == 0:
+                raise ValueError("Queue is empty")
+            
+            if position < 1 or position > queue_length:
+                raise ValueError(
+                    f"Position {position} is out of range (1 to {queue_length})"
+                )
+            
+            # Convert 1-based user position to 0-based API position
+            api_position = position - 1
+            
+            # Set tracklist index to the specified position
+            self.api.tracklist.index = api_position
+            
+            # Start playback
+            self.api.playback.play()
+            
+            # Update queue information to reflect new playing position
+            self.queue.update_queue_information()
+        except reConnectionError as error:
+            self._attr_is_available = False
+            _LOGGER.error(
+                "An error occurred playing track at position %d on Mopidy server at %s:%d",
+                position,
+                self.hostname,
+                self.port
+            )
+            _LOGGER.debug("Connection error details: %s", str(error))
+            raise
+        except ValueError:
+            # Re-raise ValueError as-is (validation errors)
             raise
 
     def find_exact(self, query: dict[str, str]) -> list[str]:

@@ -182,6 +182,80 @@ proxying them through Home Assistant is very resource intensive,
 causing delays. Therefore, I have decided to not proxy the art when
 using the Media Library for the time being.
 
+### Custom Queue Card
+
+A custom Lovelace card (`mopidy-queue-card`) provides an interactive queue management interface with drag-and-drop reordering and tap-to-play functionality. The card works identically in Home Assistant web interface and iOS app.
+
+#### Features
+
+- **Interactive Queue Display**: View all tracks in the queue with metadata (title, artist, album, position, duration)
+- **Drag-and-Drop Reordering**: Reorder tracks by dragging and dropping them
+- **Tap-to-Play**: Tap any track to start playing it immediately without reordering
+- **Visual Feedback**: Currently playing track is highlighted, with loading and error states
+- **Cross-Platform**: Works identically in Home Assistant web interface and iOS app
+- **Reactive Updates**: Automatically updates when queue changes from other sources
+
+#### Installation
+
+**HACS (Recommended)**:
+
+1. Install [HACS](https://hacs.xyz) if you haven't already
+2. Go to HACS → Frontend
+3. Click the three dots menu (⋮) → Custom repositories
+4. Add this repository URL
+5. Select category: "Lovelace"
+6. Click "ADD"
+7. Search for "Mopidy Queue Card" and install
+8. Refresh your browser
+
+**Manual Installation**:
+
+1. Copy `www/community/mopidy/mopidy-queue-card.js` to your Home Assistant `www/community/mopidy/` directory
+2. Add the resource to your Lovelace configuration:
+
+```yaml
+resources:
+  - url: /local/community/mopidy/mopidy-queue-card.js
+    type: module
+```
+
+3. Refresh your browser
+
+#### Usage
+
+Add the card to your Lovelace dashboard:
+
+```yaml
+type: custom:mopidy-queue-card
+entity: media_player.mopidy_living_room
+title: Queue
+```
+
+**Configuration Options**:
+
+- `entity` (required): The Mopidy media player entity ID
+- `title` (optional): Card title to display
+- `show_artwork` (optional): Show track artwork if available (default: false)
+- `max_height` (optional): Maximum height for scrollable list (default: "400px")
+
+**Example**:
+
+```yaml
+type: custom:mopidy-queue-card
+entity: media_player.mopidy_living_room
+title: Music Queue
+show_artwork: true
+max_height: 600px
+```
+
+#### Requirements
+
+- Home Assistant 2023.1.0 or later
+- Mopidy integration with Enhanced Services feature (version 2.5.0+)
+- Mopidy entity with `queue_tracks` attribute and `play_track_at_position` service (version 2.7.0+)
+
+---
+
 ### UI Templates
 
 UI templates for enhanced queue management, playback history, and playlist management are available in the `docs/ui-templates/` directory.

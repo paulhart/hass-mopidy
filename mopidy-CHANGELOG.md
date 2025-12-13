@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.0] - 2025-12-13
+
+### Added
+
+- Add custom Lovelace card `mopidy-queue-card` for interactive queue management
+- Add drag-and-drop reordering of tracks in the queue via custom card
+- Add tap-to-play functionality to start playing any track without reordering
+- Add `queue_tracks` entity attribute exposing full queue track list with metadata (position, URI, title, artist, album, duration)
+- Add `mopidy.play_track_at_position` service to play a track at a specific position without reordering
+- Add visual feedback for currently playing track in custom card
+- Add loading states, error handling, and retry functionality in custom card
+- Add support for external queue modification detection during drag operations
+- Add graceful handling of rapid successive operations with operation queuing
+
+### Changed
+
+- Queue management now available via both template-based UI (existing) and custom card (new)
+- Custom card provides improved UX with drag-and-drop and tap-to-play compared to template-based approach
+
 ## [2.6.0] - 2025-12-11
 
 ### Added

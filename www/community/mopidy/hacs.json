@@ -1,0 +1,7 @@
+{
+  "name": "Mopidy Queue Card",
+  "filename": "mopidy-queue-card.js",
+  "render_readme": true,
+  "homeassistant": "2023.1.0"
+}
+

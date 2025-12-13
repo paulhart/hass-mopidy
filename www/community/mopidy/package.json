@@ -1,0 +1,30 @@
+{
+  "name": "mopidy-queue-card",
+  "version": "1.0.0",
+  "description": "Custom Lovelace card for Mopidy queue management with drag-and-drop and tap-to-play",
+  "main": "mopidy-queue-card.js",
+  "scripts": {
+    "build": "tsc && webpack --mode production",
+    "dev": "tsc && webpack --mode development --watch",
+    "type-check": "tsc --noEmit"
+  },
+  "keywords": [
+    "home-assistant",
+    "lovelace",
+    "custom-card",
+    "mopidy"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "sortablejs": "^1.15.0"
+  },
+  "devDependencies": {
+    "@types/sortablejs": "^1.15.0",
+    "typescript": "^5.0.0",
+    "webpack": "^5.0.0",
+    "webpack-cli": "^5.0.0",
+    "ts-loader": "^9.5.0"
+  }
+}
+

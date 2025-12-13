@@ -357,3 +357,22 @@ find_exact:
       required: true
       selector:
         object:
+
+play_track_at_position:
+  name: Play Track at Position
+  description: Start playing a track at the specified position in the queue without reordering tracks.
+  target:
+    entity:
+      integration: mopidy
+      domain: media_player
+  fields:
+    position:
+      name: Position
+      description: Track position to play (1-based, first track = 1)
+      required: true
+      selector:
+        number:
+          min: 1
+          max: 100
+          step: 1
+          unit_of_measurement: "position"
