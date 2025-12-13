@@ -21,7 +21,7 @@
 type: vertical-stack
 cards:
   # Queue State Display
-  - type: template
+  - type: markdown
     title: Queue Status
     content: |
       {% set entity = 'media_player.mopidy_entity' %}
@@ -78,7 +78,7 @@ cards:
         }
 
   # Move Track Validation Message
-  - type: template
+  - type: markdown
     content: |
       {% set queue_size = state_attr('media_player.mopidy_entity', 'queue_size') | int(0) %}
       {% set from_pos = states('input_number.mopidy_queue_from_position') | int(0) %}
@@ -130,7 +130,7 @@ cards:
         }
 
   # Remove Track Validation Message
-  - type: template
+  - type: markdown
     content: |
       {% set queue_size = state_attr('media_player.mopidy_entity', 'queue_size') | int(0) %}
       {% set remove_pos = states('input_number.mopidy_queue_remove_position') | int(0) %}
@@ -174,7 +174,7 @@ cards:
         show_state: false
 
   # Filter Validation Message
-  - type: template
+  - type: markdown
     content: |
       {% set artist = states('input_text.mopidy_filter_artist') | trim %}
       {% set album = states('input_text.mopidy_filter_album') | trim %}
