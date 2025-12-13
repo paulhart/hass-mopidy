@@ -2,3 +2,4 @@
 .specify
 __pycache__
 .venv
+www/community/mopidy/node_modules
