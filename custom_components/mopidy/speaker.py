@@ -137,6 +137,7 @@ class MopidyQueue:
     _current_track_uri: str | None = None
     _attr_queue_position: int | None = None
     _attr_queue_size: int | None = None
+    _attr_queue_tracks: list[dict[str, Any]] | None = None
 
     def __init__(self):
         """Initialize queue"""
@@ -433,6 +434,19 @@ class MopidyQueue:
         # Update queue tracks data by refreshing track list
         # This ensures queue_tracks attribute has current data
         self.update_tracks()
+        
+        # Cache queue_tracks array for use in extra_state_attributes
+        # This avoids blocking calls in the synchronous property
+        try:
+            self._attr_queue_tracks = self.get_queue_tracks_array()
+        except Exception as error:
+            # If queue tracks can't be retrieved, set to empty list
+            # This prevents blocking the state update
+            _LOGGER.debug(
+                "Could not update queue_tracks cache: %s",
+                str(error)
+            )
+            self._attr_queue_tracks = []
 
         if updater is not None:
             updater()

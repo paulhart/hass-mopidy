@@ -589,10 +589,9 @@ class MopidyMediaPlayerEntity(MediaPlayerEntity):
             attributes["snapshot_taken_at"] = self.speaker.snapshot_taken_at
 
         # Add queue_tracks attribute with full track list
-        if self.speaker.queue is not None:
-            queue_tracks = self.speaker.queue.get_queue_tracks_array()
-            if queue_tracks:
-                attributes["queue_tracks"] = queue_tracks
+        # Use cached value to avoid blocking calls in synchronous property
+        if self.speaker.queue is not None and self.speaker.queue._attr_queue_tracks is not None:
+            attributes["queue_tracks"] = self.speaker.queue._attr_queue_tracks
 
         return attributes
 
