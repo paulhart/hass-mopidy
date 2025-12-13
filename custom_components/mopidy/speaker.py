@@ -410,7 +410,9 @@ class MopidyQueue:
     def update_queue_information(self, updater=None):
         """Get the Mopidy Instance queue information"""
         try:
-            self._attr_queue_position = self.api.tracklist.index()
+            # tracklist.index() returns 0-based index, convert to 1-based position
+            api_index = self.api.tracklist.index()
+            self._attr_queue_position = api_index + 1 if api_index is not None else None
         except reConnectionError as error:
             self._attr_is_available = False
             _LOGGER.error(
