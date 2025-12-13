@@ -213,47 +213,9 @@ A custom Lovelace card (`mopidy-queue-card`) provides an interactive queue manag
 
 **⚠️ HACS Limitation:**
 
-HACS doesn't support repositories containing both Integration and Dashboard components. The custom queue card must be installed manually (see instructions below).
+HACS doesn't support repositories containing both Integration and Dashboard components. The custom queue card must be installed manually.
 
-**Manual Installation**:
-
-1. Copy `www/community/mopidy/mopidy-queue-card.js` to your Home Assistant `www/community/mopidy/` directory
-2. Add the resource to your Lovelace configuration:
-
-```yaml
-resources:
-  - url: /local/community/mopidy/mopidy-queue-card.js
-    type: module
-```
-
-3. Refresh your browser
-
-#### Usage
-
-Add the card to your Lovelace dashboard:
-
-```yaml
-type: custom:mopidy-queue-card
-entity: media_player.mopidy_living_room
-title: Queue
-```
-
-**Configuration Options**:
-
-- `entity` (required): The Mopidy media player entity ID
-- `title` (optional): Card title to display
-- `show_artwork` (optional): Show track artwork if available (default: false)
-- `max_height` (optional): Maximum height for scrollable list (default: "400px")
-
-**Example**:
-
-```yaml
-type: custom:mopidy-queue-card
-entity: media_player.mopidy_living_room
-title: Music Queue
-show_artwork: true
-max_height: 600px
-```
+**For installation and usage instructions, see:** [`www/community/mopidy/README.md`](www/community/mopidy/README.md)
 
 #### Requirements
 
