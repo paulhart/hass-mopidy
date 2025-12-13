@@ -13,11 +13,6 @@ interface HomeAssistant {
     states: {
         [entityId: string]: HassEntity;
     };
-    connection: {
-        subscribeEntities: (callback: (entities: {
-            [entityId: string]: HassEntity;
-        }) => void) => () => void;
-    };
     callService: (domain: string, service: string, serviceData?: {
         [key: string]: any;
     }, target?: {
@@ -49,13 +44,13 @@ export declare class MopidyQueueCard extends LitElement {
     private error;
     private isDragging;
     private dragStartPosition;
-    private _unsubEntities?;
     private _sortableInstance;
     private _pendingOperations;
     setConfig(config: MopidyQueueCardConfig): void;
     connectedCallback(): void;
     disconnectedCallback(): void;
     private _subscribeEntities;
+    updated(changedProperties: PropertyValues): void;
     private _updateEntityState;
     private _retry;
     private _formatMetadata;
@@ -63,7 +58,6 @@ export declare class MopidyQueueCard extends LitElement {
     private _renderTrack;
     private _formatDuration;
     firstUpdated(): void;
-    updated(changedProperties: PropertyValues): void;
     private _initSortable;
     private _handleTrackClick;
     private _moveTrack;
