@@ -12,21 +12,15 @@ A custom Lovelace card for Home Assistant that provides an interactive queue man
 
 ## Installation
 
-### HACS (Recommended)
+### ⚠️ HACS Limitation
 
-1. Install [HACS](https://hacs.xyz) if you haven't already
-2. Go to HACS → Dashboard
-3. Click the three dots menu (⋮) → Custom repositories
-4. Add this repository URL
-5. Select category: "Dashboard"
-6. Click "ADD"
-7. Search for "Mopidy Queue Card" and install
-8. Refresh your browser
+**Note:** This repository contains both an Integration and a Dashboard card. HACS doesn't support repositories with multiple component types, so the card must be installed manually.
 
-### Manual Installation
+### Manual Installation (Required)
 
-1. Copy `mopidy-queue-card.js` to your Home Assistant `www/community/mopidy/` directory
-2. Add the resource to your Lovelace configuration:
+1. Clone this repository or download the `mopidy-queue-card.js` file from `www/community/mopidy/`
+2. Copy `mopidy-queue-card.js` to your Home Assistant `www/community/mopidy/` directory (create the directory if it doesn't exist)
+3. Add the resource to your Lovelace configuration:
 
 ```yaml
 resources:
@@ -34,7 +28,7 @@ resources:
     type: module
 ```
 
-3. Refresh your browser
+4. Refresh your browser
 
 ## Usage
 

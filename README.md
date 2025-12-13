@@ -36,18 +36,9 @@ Please look at the [Mopidy installation & configuration instructions](https://do
 
 **Installing the Custom Queue Card (Optional):**
 
-The custom queue card can be installed from the same repository:
+**⚠️ HACS Limitation:**
 
-1. Go to HACS → Dashboard
-2. Click on the 3 dots in the top right corner
-3. Select "Custom repositories"
-4. Add the URL to this repository (same URL as above)
-5. Select category: **Dashboard**
-6. Click "ADD"
-7. Search for "Mopidy Queue Card" and install
-8. Refresh your browser
-
-**Note:** You can install both components from the same repository URL - just add it once for each category (Integration and Dashboard).
+HACS doesn't support repositories containing both Integration and Dashboard components. The custom queue card must be installed manually (see instructions below).
 
 #### Manual
 
@@ -220,18 +211,9 @@ A custom Lovelace card (`mopidy-queue-card`) provides an interactive queue manag
 
 #### Installation
 
-**HACS (Recommended)**:
+**⚠️ HACS Limitation:**
 
-1. Install [HACS](https://hacs.xyz) if you haven't already
-2. Go to HACS → Dashboard
-3. Click the three dots menu (⋮) → Custom repositories
-4. Add this repository URL (same repository as the integration)
-5. Select category: **Dashboard**
-6. Click "ADD"
-7. Search for "Mopidy Queue Card" and install
-8. Refresh your browser
-
-**Note:** This is the same repository as the Mopidy integration above. You can add it once for the Integration category and once for the Dashboard category to install both components.
+HACS doesn't support repositories containing both Integration and Dashboard components. The custom queue card must be installed manually (see instructions below).
 
 **Manual Installation**:
 
