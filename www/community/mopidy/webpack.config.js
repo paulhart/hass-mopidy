@@ -24,13 +24,10 @@ module.exports = {
       },
     ],
   },
-  externals: {
-    // Home Assistant provides Lit globally, so we don't bundle it
-    'lit': 'lit',
-    'lit/decorators.js': 'lit/decorators.js',
-    'lit/directives/class-map.js': 'lit/directives/class-map.js',
-    'lit/directives/style-map.js': 'lit/directives/style-map.js',
-  },
+  // Don't externalize Lit - bundle it with the card
+  // Home Assistant doesn't provide Lit as an importable ES module,
+  // so we need to bundle it to avoid bare specifier errors in browsers
+  externals: {},
   mode: 'production',
 };
 

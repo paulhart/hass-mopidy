@@ -17,6 +17,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "lit": "^3.0.0",
     "sortablejs": "^1.15.0"
   },
   "devDependencies": {
