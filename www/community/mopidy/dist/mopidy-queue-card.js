@@ -20,15 +20,19 @@ let MopidyQueueCard = class MopidyQueueCard extends LitElement {
         this._sortableInstance = null;
         this._pendingOperations = new Set();
     }
+    setConfig(config) {
+        if (!config.entity) {
+            throw new Error('Entity is required');
+        }
+        this.config = config;
+    }
     connectedCallback() {
         super.connectedCallback();
         this._subscribeEntities();
     }
     disconnectedCallback() {
         super.disconnectedCallback();
-        if (this._unsubEntities) {
-            this._unsubEntities();
-        }
+        // No need to unsubscribe - we're using property change detection, not subscriptions
         if (this._sortableInstance) {
             this._sortableInstance.destroy();
         }
@@ -37,16 +41,29 @@ let MopidyQueueCard = class MopidyQueueCard extends LitElement {
         if (!this.hass || !this.config?.entity) {
             return;
         }
-        this._unsubEntities = this.hass.connection.subscribeEntities((entities) => {
-            const entity = entities[this.config.entity];
-            if (entity) {
-                this._updateEntityState(entity);
-            }
-        });
-        // Initial state update
+        // Use hass.states directly and react to changes via updated() lifecycle
+        // Home Assistant updates the hass property when entity states change
         const entity = this.hass.states[this.config.entity];
         if (entity) {
             this._updateEntityState(entity);
+        }
+    }
+    updated(changedProperties) {
+        super.updated(changedProperties);
+        // React to hass property changes (entity state updates)
+        if (changedProperties.has('hass') && this.hass && this.config?.entity) {
+            const entity = this.hass.states[this.config.entity];
+            if (entity) {
+                this._updateEntityState(entity);
+            }
+        }
+        // React to config changes
+        if (changedProperties.has('config') && this.hass && this.config?.entity) {
+            this._subscribeEntities();
+        }
+        // Re-initialize SortableJS if queue list changed
+        if (changedProperties.has('queueTracks')) {
+            this._initSortable();
         }
     }
     _updateEntityState(entity) {
@@ -65,10 +82,7 @@ let MopidyQueueCard = class MopidyQueueCard extends LitElement {
     _retry() {
         this.error = null;
         this.isLoading = true;
-        // Force entity update by re-subscribing
-        if (this._unsubEntities) {
-            this._unsubEntities();
-        }
+        // Force entity update by re-reading state
         this._subscribeEntities();
     }
     _formatMetadata(value, fallback) {
@@ -152,13 +166,6 @@ let MopidyQueueCard = class MopidyQueueCard extends LitElement {
     firstUpdated() {
         // Initialize SortableJS after first render
         this._initSortable();
-    }
-    updated(changedProperties) {
-        super.updated(changedProperties);
-        // Re-initialize SortableJS if queue list changed
-        if (changedProperties.has('queueTracks')) {
-            this._initSortable();
-        }
     }
     _initSortable() {
         const listElement = this.shadowRoot?.getElementById('queue-list');
