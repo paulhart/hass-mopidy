@@ -85,6 +85,40 @@ max_height: 600px
 - Mopidy integration with Enhanced Services feature (002-mopidy-enhanced-services)
 - Mopidy entity with `queue_tracks` attribute and `play_track_at_position` service
 
+## Troubleshooting
+
+### Card Not Loading / "Custom element doesn't exist" Error
+
+1. **Verify Resource Location**: Ensure the resource is added at the **dashboard level**, not inside a section or view
+2. **Check File Path**: Verify `mopidy-queue-card.js` exists in your Home Assistant `www/community/mopidy/` directory
+3. **Hard Refresh Browser**: 
+   - **Firefox/Chrome**: Press `Ctrl+Shift+R` (or `Cmd+Shift+R` on Mac) to force reload
+   - **Or**: Open Developer Tools (F12) → Right-click refresh button → "Empty Cache and Hard Reload"
+4. **Clear Browser Cache**: If hard refresh doesn't work, clear your browser cache for the Home Assistant domain
+
+### Getting Old Version After Update
+
+If you see an old version of the card after updating the JavaScript file:
+
+1. **Hard Refresh**: Use `Ctrl+Shift+R` (or `Cmd+Shift+R` on Mac) to bypass cache
+2. **Clear Cache**: Clear browser cache for your Home Assistant domain
+3. **Check File**: Verify the file on disk was actually updated (check file modification time)
+4. **Service Worker**: If Home Assistant uses a service worker, unregister it:
+   - Open Developer Tools (F12) → Application tab → Service Workers → Unregister
+   - Refresh the page
+
+### Cache-Busting (Advanced)
+
+If caching issues persist, you can add a version query parameter to force reload:
+
+```yaml
+resources:
+  - url: /local/community/mopidy/mopidy-queue-card.js?v=2.7.0
+    type: module
+```
+
+Update the version number whenever you update the file.
+
 ## Support
 
 For issues and feature requests, please visit the [GitHub repository](https://github.com/paulhart/hass-mopidy).
