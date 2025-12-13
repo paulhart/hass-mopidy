@@ -1560,11 +1560,15 @@ class MopidySpeaker:
             # Convert 1-based user position to 0-based API position
             api_position = position - 1
             
-            # Set tracklist index to the specified position
-            self.api.tracklist.index = api_position
+            # Get tracklist tracks and play the track at the specified position
+            tl_tracks = self.api.tracklist.get_tl_tracks()
+            if api_position >= len(tl_tracks):
+                raise ValueError(
+                    f"Position {position} is out of range (1 to {len(tl_tracks)})"
+                )
             
-            # Start playback
-            self.api.playback.play()
+            # Play the track using its tlid
+            self.api.playback.play(tlid=tl_tracks[api_position].tlid)
             
             # Update queue information to reflect new playing position
             self.queue.update_queue_information()
