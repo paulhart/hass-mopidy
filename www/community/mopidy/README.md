@@ -20,13 +20,35 @@ A custom Lovelace card for Home Assistant that provides an interactive queue man
 
 1. Clone this repository or download the `mopidy-queue-card.js` file from `www/community/mopidy/`
 2. Copy `mopidy-queue-card.js` to your Home Assistant `www/community/mopidy/` directory (create the directory if it doesn't exist)
-3. Add the resource to your Lovelace configuration:
+3. Add the resource to your Lovelace dashboard using one of these methods:
+
+**Method 1: Via UI (Recommended)**
+- Go to Settings → Dashboards
+- Click the three dots menu (⋮) next to your dashboard
+- Select "Dashboard resources"
+- Click "+ ADD RESOURCE"
+- Enter: `/local/community/mopidy/mopidy-queue-card.js`
+- Select type: "JavaScript Module"
+- Click "CREATE"
+- Refresh your browser
+
+**Method 2: Via Dashboard YAML**
+- Edit your dashboard in YAML mode
+- Add the `resources:` key at the **top level** of the dashboard (not inside a section):
 
 ```yaml
+title: My Dashboard
+views:
+  - title: Home
+    path: home
+    cards:
+      # ... your cards here
 resources:
   - url: /local/community/mopidy/mopidy-queue-card.js
     type: module
 ```
+
+**Important:** The `resources:` key must be at the dashboard level, not inside a section or view.
 
 4. Refresh your browser
 
