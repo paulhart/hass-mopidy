@@ -19,7 +19,7 @@
 type: vertical-stack
 cards:
   # Playlist List Display
-  - type: template
+  - type: markdown
     title: Available Playlists
     content: |
       {% set entity = 'media_player.mopidy_entity' %}
@@ -75,7 +75,7 @@ cards:
         }
 
   # Create Playlist Validation
-  - type: template
+  - type: markdown
     content: |
       {% set queue_size = state_attr('media_player.mopidy_entity', 'queue_size') | int(0) %}
       {% set playlist_name = states('input_text.mopidy_playlist_name') | trim %}
@@ -100,7 +100,7 @@ cards:
       {% endif %}
 
   # Save to Playlist Section
-  - type: template
+  - type: markdown
     title: Save Queue to Playlist
     content: |
       {% set entity = 'media_player.mopidy_entity' %}
@@ -152,7 +152,7 @@ cards:
         show_state: false
 
   # Delete Playlist Section
-  - type: template
+  - type: markdown
     title: Delete Playlist
     content: |
       {% set entity = 'media_player.mopidy_entity' %}

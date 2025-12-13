@@ -28,8 +28,7 @@ cards:
     entity: media_player.mopidy_entity
 
   # Queue Information and Quick Actions
-  - type: template
-    title: Queue & History
+  - type: markdown
     content: |
       {% set entity = 'media_player.mopidy_entity' %}
       {% set queue_size = state_attr(entity, 'queue_size') | int(0) %}
@@ -37,23 +36,23 @@ cards:
       {% set entity_state = states(entity) %}
       
       {% if entity_state == 'unavailable' %}
-        <div class="error" style="color: red; padding: 10px;">
-          ⚠️ Mopidy server is unavailable
-        </div>
+      <div style="color: red; padding: 10px;">
+        ⚠️ **Mopidy server is unavailable**
+      </div>
       {% else %}
-        <div style="padding: 10px;">
-          <div style="font-size: 16px; font-weight: bold; margin-bottom: 10px;">
-            Queue: {{ queue_size }} track(s)
-            {% if queue_position > 0 %}
-              (Playing: {{ queue_position }}/{{ queue_size }})
-            {% endif %}
-          </div>
-          {% if queue_size == 0 %}
-            <div style="color: var(--secondary-text-color); font-size: 12px; margin-bottom: 10px;">
-              Queue is empty. Add tracks to manage them.
-            </div>
+      <div style="padding: 10px;">
+        <div style="font-size: 16px; font-weight: bold; margin-bottom: 10px;">
+          **Queue:** {{ queue_size }} track(s)
+          {% if queue_position > 0 %}
+            (Playing: {{ queue_position }}/{{ queue_size }})
           {% endif %}
         </div>
+        {% if queue_size == 0 %}
+        <div style="color: var(--secondary-text-color); font-size: 12px; margin-bottom: 10px;">
+          Queue is empty. Add tracks to manage them.
+        </div>
+        {% endif %}
+      </div>
       {% endif %}
 
   # Quick Action Buttons

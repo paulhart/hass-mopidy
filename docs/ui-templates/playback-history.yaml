@@ -21,7 +21,7 @@
 type: vertical-stack
 cards:
   # History Header
-  - type: template
+  - type: markdown
     title: Playback History
     content: |
       {% set entity = 'media_player.mopidy_entity' %}
@@ -44,7 +44,7 @@ cards:
       {% endif %}
 
   # History List
-  - type: template
+  - type: markdown
     title: History List
     content: |
       {% set entity = 'media_player.mopidy_entity' %}
