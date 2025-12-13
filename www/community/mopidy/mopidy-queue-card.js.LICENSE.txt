@@ -1,3 +1,15 @@
+/**
+ * @license
+ * Copyright 2017 Google LLC
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+
+/**
+ * @license
+ * Copyright 2019 Google LLC
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+
 /**!
  * Sortable 1.15.6
  * @author	RubaXa   <trash@rubaxa.org>
